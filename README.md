@@ -77,12 +77,12 @@ Explicar:
 
 | Arquivo | Finalidade |
 |---|---|
-| `desafio_tecnico_ai_eng - categories.csv` | Categorias dos instrumentos |
-| `desafio_tecnico_ai_eng - products.csv` | Catálogo, preços, estoque e especificações |
-| `desafio_tecnico_ai_eng - promotions.csv` | Promoções e descontos |
-| `desafio_tecnico_ai_eng - customers.csv` | Dados dos clientes |
-| `desafio_tecnico_ai_eng - orders.csv` | Dados e status dos pedidos |
-| `desafio_tecnico_ai_eng - order_items.csv` | Produtos e quantidades dos pedidos |
+| `categories.csv` | Categorias dos instrumentos |
+| `products.csv` | Catálogo, preços, estoque e especificações |
+| `promotions.csv` | Promoções e descontos |
+| `customers.csv` | Dados dos clientes |
+| `orders.csv` | Dados e status dos pedidos |
+| `order_items.csv` | Produtos e quantidades dos pedidos |
 | políticas_da_loja.pdf | Regras e procedimentos de atendimento |
 
 Todos esses arquivos estão na pasta `data/`.
