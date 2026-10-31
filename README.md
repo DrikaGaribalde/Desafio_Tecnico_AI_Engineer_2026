@@ -15,8 +15,9 @@ foi executado apenas um teste isolado de chamadas de ferramentas.
 Foi validado o ciclo básico de chamada de ferramenta com o modelo
 local llama3.1:latest via Ollama.
 
-A busca por nome, as promoções e a integração das políticas ainda
-serão implementadas e avaliadas.
+As consultas de catálogo e os cálculos de promoções estão implementados e
+testados como funções Python. A integração com o modelo, a CLI e a consulta
+às políticas ainda serão implementadas e avaliadas.
 
 ## Escopo
 
@@ -44,6 +45,21 @@ sem integração com um sistema comercial em tempo real.
 
 A escolha do modelo ainda será avaliada nos cenários completos
 de atendimento.
+
+## Decisões de arquitetura
+
+A arquitetura inicial confirmada utiliza Python, CLI, consultas diretas aos
+CSVs, chamadas de ferramentas executadas de forma controlada pela aplicação
+e histórico em memória. A escolha inicial de modelo é `llama3.1:latest` via
+Ollama, sujeita à validação nos cenários completos.
+
+A estratégia de consulta às políticas permanece pendente de validação;
+não foi verificado se o PDF completo cabe no contexto configurado.
+
+A [ADR 0001 — Arquitetura inicial](docs/adr/0001-arquitetura-inicial.md)
+registra o contexto, as alternativas, os resultados dos testes e as limitações.
+As referências a propostas na tabela anterior correspondem à etapa de avaliação;
+CLI e histórico em memória estão agora confirmados para a arquitetura inicial.
 
 ## Arquitetura e estratégia de prompt
 
@@ -97,7 +113,21 @@ Incluir:
 
 ## Regras e suposições
 
-As regras serão documentadas conforme forem implementadas e verificadas.
+Regras implementadas em `emporio/catalog.py`:
+
+- Disponibilidade exige status `active` e estoque maior que zero.
+- A busca combina termos no nome, categoria e descrição, ignorando caixa e acentos.
+  Descrições inconsistentes da fonte podem afetar os resultados; não há correção automática.
+- O teto de preço é inclusivo e usa o preço promocional, sem desconto PIX.
+- Promoções são consideradas ativas por `is_active`, pois não há datas de vigência.
+  Se houver mais de uma ativa para o produto, aplica-se somente o maior desconto;
+  essa é uma suposição do protótipo, não uma regra explícita do manual.
+- Valores usam `Decimal` e arredondamento `ROUND_HALF_UP` para centavos.
+  O PIX aplica 5% somente quando não há promoção ativa, sem cumulatividade.
+- Consulta por ID ausente retorna `None`; busca sem resultados retorna uma lista vazia.
+  Arquivos ausentes ou ambíguos e dados obrigatórios ausentes ou inválidos geram
+  `CatalogDataError`, sem inventar valores padrão.
+- O catálogo é carregado em memória por instância, sem escrever nos CSVs originais.
 
 Documentar, por exemplo:
 
@@ -110,8 +140,18 @@ Documentar, por exemplo:
 
 ## Testes e avaliação
 
-Ainda não há suíte de testes versionada. O teste inicial foi executado
-diretamente no interpretador, sem um script salvo no repositório.
+Para executar os testes das funções, sem Ollama nem dependências externas:
+
+```powershell
+py -3.12 -m unittest discover -s tests -v
+```
+
+Foram executados 12 testes com sucesso, cobrindo consultas, filtros,
+disponibilidade, promoções, cálculos e dados ausentes ou inválidos.
+Os testes usam a base fornecida e CSVs sintéticos em diretórios temporários.
+
+O teste inicial com o modelo foi executado diretamente no interpretador,
+sem um script salvo no repositório. A suíte acima não testa o modelo.
 
 Distinguir:
 
@@ -154,6 +194,10 @@ das limitações observadas.
 
 Utilizei o ChatGPT para interpretar o enunciado, discutir
 alternativas de arquitetura e organizar as etapas do projeto.
+
+O Codex apoiou a inspeção do ambiente, o experimento com Ollama, a documentação
+e a implementação e execução dos testes do módulo de catálogo. A integração
+com o agente ainda não foi implementada.
 
 Esta seção será atualizada conforme a participação das ferramentas
 na implementação, revisão e testes.
