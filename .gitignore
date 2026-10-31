@@ -1,0 +1,48 @@
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# Cache e arquivos compilados do Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Credenciais e configurações locais
+.env
+.env.*
+!.env.example
+
+# Cobertura de testes
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Empacotamento
+build/
+dist/
+*.egg-info/
+
+# Logs e arquivos temporários
+*.log
+tmp/
+temp/
+
+# Histórico local das conversas
+conversation_history/
+chat_history/
+
+# Configurações pessoais das IDEs
+.vscode/
+.idea/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Arquivos temporários de notebooks
+.ipynb_checkpoints/
