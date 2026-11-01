@@ -11,8 +11,8 @@ def main():
     except CatalogDataError as exc:
         print(f"Não foi possível carregar o catálogo: {exc}")
         return 1
-    print("Empório da Música — consultas de catálogo. Digite 'sair' para encerrar.")
-    print("Fonte: CSVs estáticos do desafio. Pedidos e políticas ainda não disponíveis.")
+    print("Empório da Música — catálogo e políticas. Digite 'sair' para encerrar.")
+    print("Fontes: CSVs estáticos e manual fornecido. Pedidos ainda não disponíveis.")
     try:
         while True:
             text = input("Você: ").strip()

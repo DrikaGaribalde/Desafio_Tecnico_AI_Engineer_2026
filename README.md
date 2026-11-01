@@ -9,13 +9,11 @@ pedidos e políticas da loja com base nos materiais fornecidos.
 
 ## Status do projeto
 
-Primeira etapa funcional: CLI com histórico em memória, integração local com
-`llama3.1:latest` via Ollama e consultas ao catálogo por ferramentas.
-As consultas, os cálculos e os controles da aplicação possuem testes automatizados;
-cinco conversas reais foram executadas e registradas.
+CLI funcional com histórico em memória, `llama3.1:latest` via Ollama e ferramentas
+de produtos e políticas. As consultas, cálculos, recuperação de seções e controles
+possuem testes automatizados e conversas reais registradas, incluindo falhas observadas.
 
-Pedidos e consulta às políticas ainda não estão implementados. Não há leitura
-dos dados de clientes pelo agente nesta etapa.
+Pedidos ainda não estão implementados. Não há leitura dos dados de clientes pelo agente.
 
 ## Escopo
 
@@ -51,13 +49,15 @@ CSVs, chamadas de ferramentas executadas de forma controlada pela aplicação
 e histórico em memória. A escolha inicial de modelo é `llama3.1:latest` via
 Ollama, sujeita à validação nos cenários completos.
 
-A estratégia de consulta às políticas permanece pendente de validação;
-não foi verificado se o PDF completo cabe no contexto configurado.
+A consulta às políticas usa busca textual por seções completas extraídas do PDF,
+com títulos, páginas e ressalvas. Não envia o PDF inteiro ao contexto.
 
 A [ADR 0001 — Arquitetura inicial](docs/adr/0001-arquitetura-inicial.md)
 registra o contexto, as alternativas, os resultados dos testes e as limitações.
 O contrato da ferramenta e os controles da primeira etapa estão na
 [ADR 0002 — Catálogo e execução de ferramentas](docs/adr/0002-catalogo-e-ferramentas.md).
+A integração das políticas, as ambiguidades e o novo orçamento estão na
+[ADR 0003 — Consulta às políticas](docs/adr/0003-consulta-as-politicas.md).
 
 ## Arquitetura e estratégia de prompt
 
@@ -74,10 +74,21 @@ Os preços são calculados em Python e enviados ao modelo como texto decimal.
 São permitidas até três chamadas de ferramentas por turno. A quarta solicitação
 encerra o turno com mensagem compreensível. O histórico guarda até quatro turnos
 completos em memória; para envio, retém os mais recentes até aproximadamente
-10.000 caracteres serializados. Isso é uma heurística, não uma contagem de tokens.
-Contexto configurado: 4.096 tokens; temperatura: 0; saída: até 768 tokens por chamada;
-timeout HTTP: 120 segundos por chamada. Turnos incompletos não entram no histórico.
-As políticas não são enviadas ao modelo nesta etapa.
+10.000 caracteres serializados. Antes de cada envio há um orçamento adicional com
+bytes UTF-8 do prompt completo mais margem de template e reserva de saída.
+Turnos antigos são removidos inteiros se necessário; fontes não são cortadas.
+Se ainda não couber, a aplicação pede uma pergunta mais específica.
+
+Contexto configurado: **8.192 tokens**; temperatura: 0; saída: até 768 tokens por chamada;
+timeout HTTP: 120 segundos. A API informa os tokens efetivos de cada chamada para
+avaliação. A estimativa local é conservadora, não um tokenizador exato.
+Turnos incompletos não entram no histórico.
+
+`consultar_politicas(pergunta)` busca por palavras e títulos em 25 seções do manual,
+incluindo seções relacionadas quando necessárias para preservar exceções. O resultado
+inclui título, conteúdo completo e referência; sem evidência ou orçamento, informa
+insuficiência. O limite por resultado é 4.400 caracteres, sujeito também ao orçamento
+total do turno. A aplicação acrescenta o rodapé das fontes efetivamente consultadas.
 
 | Arquivo | Responsabilidade |
 | --- | --- |
@@ -86,9 +97,13 @@ As políticas não são enviadas ao modelo nesta etapa.
 | `emporio/ollama_client.py` | Comunicação HTTP e erros do Ollama |
 | `emporio/tools.py` | Contrato, validação e execução de `buscar_produtos` |
 | `emporio/catalog.py` | Leitura dos CSVs, filtros e cálculos |
+| `emporio/policies.py` | Recuperação de seções, dependências e ressalvas do manual |
+| `emporio/context.py` | Estimativa conservadora do orçamento de contexto |
 | `emporio/prompts.py` | Persona, limites e instruções do modelo |
 | `tests/` | Testes locais, sem depender do modelo |
 | `scripts/evaluate_catalog.py` | Conversas reais reproduzíveis e registro das ferramentas |
+| `scripts/extract_policies.py` | Preparação das seções a partir do PDF |
+| `scripts/evaluate_policies.py` | Conversas reais de políticas e métricas de contexto |
 
 ## Dados utilizados
 
@@ -101,6 +116,7 @@ As políticas não são enviadas ao modelo nesta etapa.
 | `orders.csv` | Dados e status dos pedidos |
 | `order_items.csv` | Produtos e quantidades dos pedidos |
 | políticas_da_loja.pdf | Regras e procedimentos de atendimento |
+| `politicas_secoes.json` | Texto derivado do PDF, com títulos, páginas e hash da fonte |
 
 Todos esses arquivos estão na pasta `data/`.
 
@@ -147,6 +163,17 @@ padrão. Não há variáveis de ambiente obrigatórias nem credenciais. A CLI us
 Se houver problemas de acentuação em terminais ou redirecionamentos, use
 `py -3.12 -X utf8 -m emporio`, também verificado.
 
+O arquivo `data/politicas_secoes.json` já está preparado. A aplicação verifica seu
+vínculo com o PDF por SHA-256. Se o PDF mudar, regenere e revise a extração:
+
+```powershell
+py -3.12 -m scripts.extract_policies
+```
+
+Esse comando foi executado usando `pdftotext` disponível no PATH do ambiente.
+Somente a regeneração exige esse executável (Poppler); a execução normal não.
+Não houve instalação de dependências ou download de modelos nesta integração.
+
 ## Regras e suposições
 
 Regras implementadas em `emporio/catalog.py`:
@@ -165,8 +192,11 @@ Regras implementadas em `emporio/catalog.py`:
   `CatalogDataError`, sem inventar valores padrão.
 - O catálogo é carregado em memória por instância, sem escrever nos CSVs originais.
 
-As interpretações das ambiguidades do manual e a identificação de clientes
-permanecem pendentes, pois políticas e pedidos não fazem parte desta etapa.
+Ressalvas do manual ficam separadas dos trechos literais: o frete de exatamente
+R$ 500 não é definido; parcelamento contém divergências; exclusões de troca não
+devem ser importadas automaticamente para arrependimento online. A aplicação não
+escolhe silenciosamente uma regra para preencher essas lacunas.
+A identificação de clientes permanece pendente, junto da consulta a pedidos.
 
 ## Testes e avaliação
 
@@ -176,9 +206,10 @@ Para executar os testes das funções, sem Ollama nem dependências externas:
 py -3.12 -m unittest discover -s tests -v
 ```
 
-Foram executados 21 testes com sucesso, cobrindo consultas, filtros,
+Foram executados 34 testes com sucesso, cobrindo consultas, filtros,
 disponibilidade, promoções, cálculos, argumentos inválidos, limite de ferramentas,
-histórico, erros HTTP e dados ausentes ou inválidos.
+histórico, erros HTTP, dados ausentes ou inválidos, políticas, referências,
+exceções e orçamento de contexto.
 Os testes usam a base fornecida e CSVs sintéticos em diretórios temporários.
 
 Os testes de orquestração usam um cliente simulado, não comprovam a qualidade do
@@ -191,6 +222,17 @@ py -3.12 -m scripts.evaluate_catalog
 Esse comando foi executado e grava os diálogos, argumentos, resultados e tempos
 em `docs/conversas/`, substituindo os registros anteriores nessa pasta. As rodadas
 iniciais com falhas foram preservadas em `docs/avaliacoes/`.
+
+Para avaliar políticas com o modelo e registrar tokens, ferramentas e respostas:
+
+```powershell
+py -3.12 -X utf8 -m scripts.evaluate_policies --rodada rodada-06
+```
+
+As rodadas `rodada-01` a `rodada-05` foram executadas. Escolha um identificador
+novo: o script recusa sobrescrever uma rodada existente. Ele grava em
+`docs/avaliacoes/politicas/`. O parâmetro mostrado permite uma nova execução;
+o comando efetivamente usado na rodada final foi o mesmo com `--rodada rodada-05`.
 
 No teste inicial, o modelo solicitou corretamente a ferramenta
 e utilizou os dados retornados. Entretanto, não informou que
@@ -217,6 +259,12 @@ com o modelo carregado. Não é um benchmark nem uma garantia de consistência.
 
 Veja a [avaliação das rodadas e limitações](docs/avaliacoes/README.md).
 
+Os seis cenários de políticas, as respostas reais e a medição do contexto estão em
+[avaliação de políticas](docs/avaliacoes/politicas/README.md). O horário regular foi
+respondido corretamente, mas houve omissão de exceções; a consulta mista executou as
+duas ferramentas, com limitações de apresentação registradas. Não é aprovação irrestrita
+de todas as respostas. Os exemplos anteriores de produtos são registros históricos.
+
 ## Limitações conhecidas
 
 - Dados estáticos, sem atualização por um sistema externo.
@@ -227,9 +275,15 @@ Veja a [avaliação das rodadas e limitações](docs/avaliacoes/README.md).
   de digitação. Categoria usa correspondência parcial, ignorando caixa e acentos.
 - A aplicação valida ferramentas, mas não valida semanticamente todo o texto gerado.
   O modelo ainda pode deixar de consultar a ferramenta ou contradizer seu retorno.
-- Não há orçamento exato de tokens. Conversas longas podem perder contexto e referências
-  antigas ao limitar o histórico. Descontinuados e lançamentos foram testados nas
-  funções; as cinco conversas reais não cobrem todos esses estados nem todas as falhas.
+- O orçamento local não usa um tokenizador exato. Conversas podem perder referências
+  antigas ao remover turnos inteiros. Isso ocorreu na avaliação real das políticas,
+  embora as chamadas enviadas coubessem no contexto configurado.
+- A busca textual não garante compreensão de sinônimos ou perguntas com vários assuntos.
+  O extrator é adequado ao PDF fornecido, sem OCR, e exige revisão se sua estrutura mudar.
+- Seções completas preservam condições no retorno, mas o modelo ainda pode omiti-las
+  na resposta. Citações no rodapé são adicionadas pela aplicação e não garantem fidelidade.
+- Descontinuados e lançamentos foram testados nas funções; as conversas reais não
+  cobrem todos esses estados nem todas as falhas.
 - Identificação do cliente e restrição de acesso a pedidos ainda não implementadas.
 - Pedidos sem data efetiva de recebimento ou canal da compra; a previsão de entrega
   não permite concluir elegibilidade para devolução.
@@ -251,6 +305,8 @@ O Codex apoiou a inspeção do ambiente, o experimento com Ollama, a documentaç
 e a implementação da CLI, cliente Ollama, ferramenta, catálogo e testes. Também
 executou as conversas reais, inspecionou as falhas, ajustou o contrato e as instruções
 e documentou os resultados, incluindo as rodadas malsucedidas.
+Na integração das políticas, também preparou o extrator e o arquivo derivado,
+implementou busca e orçamento de contexto e executou avaliações reais com métricas.
 
 Esta seção será atualizada conforme a participação das ferramentas
 na implementação, revisão e testes.

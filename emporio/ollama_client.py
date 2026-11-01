@@ -4,6 +4,8 @@ import json
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from emporio.context import CONTEXT_TOKENS, OUTPUT_TOKENS, fits_context, input_bound
+
 
 class OllamaError(RuntimeError):
     pass
@@ -14,15 +16,26 @@ class OllamaClient:
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
+        self.last_usage = {}
 
     def chat(self, messages, tools):
+        self.last_usage = {}
+        if not fits_context(messages, tools):
+            raise OllamaError("A consulta excede o orçamento de contexto. Faça uma pergunta mais específica ou inicie uma nova sessão.")
         payload = {"model": self.model, "messages": messages, "tools": tools,
-                   "stream": False, "options": {"temperature": 0, "num_ctx": 4096, "num_predict": 768}}
+                   "stream": False, "options": {"temperature": 0, "num_ctx": CONTEXT_TOKENS, "num_predict": OUTPUT_TOKENS}}
         request = Request(self.base_url + "/api/chat", data=json.dumps(payload).encode("utf-8"),
                           headers={"Content-Type": "application/json"})
         try:
             with urlopen(request, timeout=self.timeout) as response:
                 data = json.load(response)
+            self.last_usage = {"prompt_tokens": data.get("prompt_eval_count"),
+                               "output_tokens": data.get("eval_count"),
+                               "limite_contexto": CONTEXT_TOKENS,
+                               "reserva_saida": OUTPUT_TOKENS,
+                               "estimativa_conservadora_entrada": input_bound(messages, tools)}
+            if data.get("prompt_eval_count", 0) + OUTPUT_TOKENS > CONTEXT_TOKENS:
+                raise OllamaError("O prompt medido excedeu o orçamento reservado de contexto. Reformule a consulta.")
             message = data["message"]
             if not isinstance(message, dict) or message.get("role") != "assistant":
                 raise ValueError("Mensagem inválida")

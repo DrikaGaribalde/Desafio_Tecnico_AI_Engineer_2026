@@ -3,6 +3,7 @@
 Uso: py -3.12 -m scripts.evaluate_catalog
 """
 
+import argparse
 import json
 from pathlib import Path
 from time import perf_counter
@@ -22,7 +23,10 @@ SCENARIOS = [
 
 
 def main():
-    output = Path(__file__).resolve().parents[1] / "docs" / "conversas"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--saida", default="docs/conversas")
+    args = parser.parse_args()
+    output = Path(__file__).resolve().parents[1] / args.saida
     output.mkdir(parents=True, exist_ok=True)
     for name, questions in SCENARIOS:
         agent = Agent(Catalog(), OllamaClient())
@@ -33,10 +37,12 @@ def main():
             answer = agent.reply(question)
             elapsed = perf_counter() - start
             lines += [f"**Cliente:** {question}", "", "Ferramentas e resultados:", "", "```json",
-                      json.dumps(agent.last_trace, ensure_ascii=False, indent=2), "```", "",
+                      json.dumps({"ferramentas": agent.last_trace, "contexto": agent.last_usage},
+                                 ensure_ascii=False, indent=2), "```", "",
                       f"**Agente:** {answer}", "", f"Tempo do turno: {elapsed:.1f} s.", ""]
             print(json.dumps({"cenario": name, "pergunta": question, "trace": agent.last_trace,
-                              "resposta": answer, "segundos": round(elapsed, 1)}, ensure_ascii=True), flush=True)
+                              "resposta": answer, "contexto": agent.last_usage,
+                              "segundos": round(elapsed, 1)}, ensure_ascii=True), flush=True)
         (output / f"{name}.md").write_text("\n".join(lines), encoding="utf-8")
 
 

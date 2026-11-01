@@ -3,6 +3,7 @@
 from decimal import Decimal, InvalidOperation
 
 from emporio.catalog import Catalog
+from emporio.policies import PolicyDataError, PolicyStore
 
 
 TOOLS = [{"type": "function", "function": {
@@ -23,10 +24,25 @@ TOOLS = [{"type": "function", "function": {
         },
         "additionalProperties": False,
     },
+}}, {"type": "function", "function": {
+    "name": "consultar_politicas",
+    "description": "Busca seções do manual com condições, exceções e referências. Use para horários, pagamentos, parcelamento, frete, trocas, devoluções, garantia e acumular promoções com PIX. Não consulta preços de produtos.",
+    "parameters": {"type": "object", "properties": {
+        "pergunta": {"type": "string", "description": "Pergunta completa e específica sobre a política."}},
+        "required": ["pergunta"], "additionalProperties": False},
 }}]
 
 
-def execute_tool(catalog: Catalog, name: str, arguments: dict) -> dict:
+def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None) -> dict:
+    if name == "consultar_politicas":
+        if (not isinstance(arguments, dict) or set(arguments) != {"pergunta"}
+                or not isinstance(arguments["pergunta"], str)
+                or not 1 <= len(arguments["pergunta"].strip()) <= 500):
+            return {"erro": "Informe apenas pergunta, como texto de 1 a 500 caracteres."}
+        try:
+            return (policies if policies is not None else PolicyStore()).search(arguments["pergunta"])
+        except PolicyDataError as exc:
+            return {"erro": str(exc), "suficiente": False}
     if name != "buscar_produtos":
         return {"erro": "Ferramenta não autorizada."}
     if not isinstance(arguments, dict) or set(arguments) - {
@@ -70,5 +86,8 @@ def execute_tool(catalog: Catalog, name: str, arguments: dict) -> dict:
             "disponibilidade": availability, "disponivel_para_compra": product.available,
             "estoque": product.stock_quantity,
         })
-    return {"fonte": "CSV estático do desafio", "total": len(products),
-            "limitado": len(products) > 10, "produtos": items}
+    result = {"fonte": "CSV estático do desafio", "total": len(products),
+              "limitado": len(products) > 10, "produtos": items}
+    if len(products) > 10:
+        result["aviso"] = f"Há {len(products)} correspondências, mas apenas as primeiras 10 estão nesta lista. Informe que há mais opções."
+    return result
