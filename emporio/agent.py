@@ -28,11 +28,28 @@ def _clarification_focus(text, has_history):
     return None
 
 
+_ACCESSORIES = r"(?:cabos?|palhetas?|pedais|pedal|cases?|amplificadores?|acessorios?|cordas?(?!\s+orquestrais))"
+
+
+def _accessory_exchange_question(text):
+    # O objeto da troca precisa ser o acessório. Não bloqueia "trocar meu
+    # violão que veio com cordas", nem instrumentos de cordas orquestrais.
+    normalized = _normalize(text)
+    return bool(re.search(
+        r"\b(?:troca|trocar|trocas|devolver|devolucao)\s+"
+        r"(?:(?:de|do|da|dos|das|o|a|os|as|meu|minha|meus|minhas|um|uma)\s+)*"
+        + _ACCESSORIES + r"\b", normalized
+    ))
+
+
 def _accessory_scope_question(text):
     normalized = _normalize(text)
-    return bool(re.search(r"\b(vendem|vende|comercializam)\b", normalized)
-                and re.search(r"\b(cabos?|palhetas?|pedais|pedal|cases?|amplificadores?|acessorios?)\b", normalized)
-                and not re.search(r"preco|quanto|custa|orcamento", normalized))
+    sale_text = re.sub(r"\binstrumentos?\s+de\s+cordas\b", "instrumento", normalized)
+    return _accessory_exchange_question(text) or bool(
+        re.search(r"\b(vendem|vende|comercializam)\b", normalized)
+        and re.search(r"\b" + _ACCESSORIES + r"\b", sale_text)
+        and not re.search(r"preco|quanto|custa|orcamento", normalized)
+    )
 
 
 class Agent:
@@ -58,15 +75,23 @@ class Agent:
         if _accessory_scope_question(text):
             # Consulta de escopo iniciada pela aplicação: o modelo local chegou
             # a chamar catálogo ou emitir JSON de função como texto nesse caso.
-            arguments = {"pergunta": text}
+            # Consulta o escopo antes de qualquer regra de troca. A pergunta
+            # original com "trocar" favorecia a recuperação indevida da seção 4.
+            arguments = {"pergunta": "A loja comercializa acessórios?"}
             result = execute_tool(self.catalog, "consultar_politicas", arguments, self.policies, self.orders)
             self.last_trace.append({"ferramenta": "consultar_politicas", "argumentos": arguments,
                                     "resultado": result, "origem": "aplicacao"})
             scope = next((section for section in result.get("secoes", [])
                           if section["id"] == "1" and "nao comercializamos acessorios" in _normalize(section["texto"])), None)
             if scope is not None:
-                answer = ("A gente trabalha só com instrumentos musicais e não vende acessórios."
-                          "\n\nFontes consultadas: " + scope["referencia"] + ".")
+                answer = "A gente trabalha só com instrumentos musicais e não vende acessórios."
+                if _accessory_exchange_question(text):
+                    answer += " Por isso, não vou aplicar a política de troca de instrumentos a esses acessórios."
+                    if re.search(r"\bcordas?\b", _normalize(text)):
+                        answer += (" Se você quis dizer substituir as cordas de um instrumento, "
+                                   "não tenho informações para confirmar esse serviço de manutenção na loja.")
+                # Rodapé oculto no terminal; a referência continua em last_trace.
+                # answer += "\n\nFontes consultadas: " + scope["referencia"] + "."
             else:
                 answer = "Não consegui confirmar essa informação no manual agora. Você pode tentar novamente daqui a pouco."
             self.turns = (self.turns + [[{"role": "user", "content": text},
@@ -150,8 +175,9 @@ class Agent:
                         if trace["ferramenta"] == "consultar_politicas"
                         for section in trace["resultado"].get("secoes", [])
                     ))
-                    if references:
-                        answer += "\n\nFontes consultadas: " + "; ".join(references) + "."
+                    # Rodapé oculto no terminal; referências permanecem em last_trace.
+                    # if references:
+                    #     answer += "\n\nFontes consultadas: " + "; ".join(references) + "."
                     return answer
                 if count + len(calls) > self.max_tool_calls:
                     return "Não consegui concluir a consulta dentro do limite de ferramentas. Tente uma pergunta mais específica."

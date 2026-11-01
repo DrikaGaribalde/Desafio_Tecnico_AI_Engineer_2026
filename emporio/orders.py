@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+import re
 
 from emporio.catalog import Catalog, CatalogDataError, _money, _read_table
 
@@ -27,6 +28,11 @@ STATUS = {
     "pending": "pendente", "confirmed": "confirmado", "shipped": "enviado",
     "delivered": "entregue", "cancelled": "cancelado",
 }
+
+
+def _not_found():
+    return {"encontrado": False,
+            "mensagem": "Pedido não localizado para o cliente desta sessão. Confira o número ou código de rastreio, ou procure o atendimento da loja."}
 
 
 class OrderStore:
@@ -68,14 +74,25 @@ class OrderStore:
     def session(self) -> Session:
         return self._session
 
+    def get_order_by_tracking(self, tracking_code: str) -> dict:
+        if not isinstance(tracking_code, str) or not re.fullmatch(r"[A-Za-z0-9]{6,40}", tracking_code.strip()):
+            return {"erro": "codigo_rastreio deve conter de 6 a 40 letras ou dígitos, sem espaços internos."}
+        normalized = tracking_code.strip().upper()
+        matches = [order_id for order_id, order in self._orders.items()
+                   if order["owner"] == self._session.customer_id
+                   and order["tracking"] is not None and order["tracking"].upper() == normalized]
+        if len(matches) != 1:
+            # Código alheio, ausente ou ambíguo não revela dados de outros clientes.
+            return _not_found()
+        return self.get_order(matches[0])
+
     def get_order(self, order_id: int) -> dict:
         if type(order_id) is not int or order_id <= 0:
             return {"erro": "pedido_id deve ser um inteiro positivo."}
         order = self._orders.get(order_id)
         # Autoriza antes de relacionar itens/produtos e de montar qualquer resposta.
         if order is None or order["owner"] != self._session.customer_id:
-            return {"encontrado": False,
-                    "mensagem": "Pedido não localizado para o cliente desta sessão. Confira o número ou procure o atendimento da loja."}
+            return _not_found()
         items = []
         for product_id, quantity in self._items.get(order_id, []):
             product = self._catalog.get_product(product_id)

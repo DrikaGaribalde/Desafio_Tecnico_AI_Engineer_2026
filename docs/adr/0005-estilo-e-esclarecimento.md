@@ -51,9 +51,25 @@ a mesma arquitetura e o contexto de 12.288 tokens.
 ## Consequências e limites
 
 O esclarecimento inicial evita consultas prematuras nas formas reconhecidas, mas não
-cobre todas as paráfrases. O tratamento de acessórios também é limitado a perguntas
-simples de venda, sem preço; perguntas compostas seguem o fluxo normal. A regra
+cobre todas as paráfrases. O tratamento de acessórios reconhece perguntas simples de
+venda e aquelas cujo objeto explícito da troca/devolução é um acessório. A regra
 condicionada ao texto do manual precisa de revisão se o documento mudar.
+
+### Correção: troca de cordas e cabos
+
+O autor relatou que “posso fazer a trocar de cordas e cabos” recebia indevidamente
+uma regra de sete dias. O reconhecimento anterior cobria venda, não troca.
+Foi ampliado para troca/devolução dos acessórios listados e para cordas avulsas.
+A aplicação consulta explicitamente o escopo da loja antes de qualquer regra de troca,
+recuperando a seção 1. Só apresenta a exclusão de acessórios se essa seção confirmar
+que não são comercializados. Sem fonte, continua informando falha, sem inventar regra.
+
+Quando “troca de cordas” puder significar manutenção, a resposta reconhece que esse
+serviço não está confirmado; não conclui que substituir cordas seja impossível.
+Trocar um violão que menciona cordas/cabos e consultar instrumentos de cordas ou
+cordas orquestrais não são tratados como troca de acessórios. Essas distinções foram
+verificadas nas funções; a pergunta relatada também foi executada na CLI.
+Perguntas compostas ou paráfrases não reconhecidas continuam dependentes do fluxo normal.
 
 Respostas controladas são mais previsíveis, porém podem repetir sua estrutura.
 As demais respostas continuam sujeitas a desvios do modelo: na continuidade ele

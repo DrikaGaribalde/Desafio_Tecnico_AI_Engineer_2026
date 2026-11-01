@@ -82,8 +82,10 @@ As referências de estilo são ilustrativas, sem preços ou IDs de exemplo como 
 Consultas e restrições de privacidade continuam obrigatórias; o escopo de acessórios
 é recuperado do manual, sem inventar parceiros ou insistir em uma venda.
 Em aberturas simples reconhecidas, a aplicação permite perguntar sem ferramentas;
-nas perguntas explícitas de dados, mantém as consultas. Perguntas simples de venda
-de acessórios são respondidas após consulta do manual pela aplicação. Uma consulta
+nas perguntas explícitas de dados, mantém as consultas. Perguntas reconhecidas de venda
+ou troca de acessórios passam primeiro pela consulta ao escopo do manual, sem aplicar
+regras de troca de instrumentos a esses itens. Substituição de cordas como manutenção
+não é confirmada sem informação suficiente. Uma consulta
 específica de falta de estoque pode receber resposta controlada, sem oferecer
 notificações inexistentes. Há limites lexicais e desvios de estilo ainda observados.
 
@@ -104,12 +106,18 @@ Turnos incompletos não entram no histórico.
 incluindo seções relacionadas quando necessárias para preservar exceções. O resultado
 inclui título, conteúdo completo e referência; sem evidência ou orçamento, informa
 insuficiência. O limite por resultado é 4.400 caracteres, sujeito também ao orçamento
-total do turno. A aplicação acrescenta o rodapé das fontes efetivamente consultadas.
+total do turno. As referências ficam nos resultados das ferramentas e nos registros
+internos; a inclusão do rodapé na resposta está comentada em `agent.py` para não
+aparecer no terminal. Os registros históricos podem conter o rodapé antigo.
 
-`consultar_pedido(pedido_id)` valida em Python se o proprietário é o cliente da sessão
+`consultar_pedido` aceita `pedido_id` **ou** `codigo_rastreio`, apenas um por chamada,
+e valida em Python se o proprietário é o cliente da sessão
 antes de relacionar itens e produtos. O modelo não recebe argumento para escolher a
 identidade. Pedidos alheios e inexistentes têm a mesma resposta, sem exposição de dados.
 O total vem do registro histórico, sem usar preços atuais. Previsão não é recebimento.
+O rastreio é pesquisado nos CSVs, sem consulta à transportadora, e não substitui a
+identidade da sessão. Códigos alheios e inexistentes têm a mesma resposta genérica.
+Ver [ADR 0008](docs/adr/0008-consulta-por-rastreio.md).
 
 Na consulta conjunta de pedido autorizado e política de arrependimento, a aplicação
 pede os dados ausentes e apresenta a seção recuperada, sem aprovar devolução. Os
@@ -184,6 +192,10 @@ O cliente simulado padrão é **3**: o pedido 1 pertence a ele, enquanto o pedid
 fica bloqueado. Para demonstrar o pedido 9, sem previsão ou rastreamento, altere
 o argumento para `--customer-id 6`. A identidade não muda pelo chat e **não
 constitui autenticação real**.
+
+Na sessão do cliente 3, também é possível informar apenas `BRAB1234567BR` para
+consultar o pedido correspondente na base. O mesmo código permanece bloqueado em
+sessões de outros clientes.
 
 O ambiente foi verificado com Python 3.12.9. A aplicação e os testes usam apenas
 a biblioteca padrão; `requirements.txt` contém somente comentários e não há
@@ -260,7 +272,7 @@ Execute a suíte local, sem precisar do Ollama:
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-**56 testes passaram**, cobrindo filtros, disponibilidade, promoções, cálculos,
+**63 testes passaram**, cobrindo filtros, disponibilidade, promoções, cálculos,
 dados ausentes, políticas e referências, contexto, autorização dos pedidos e
 identidade da sessão. Os testes usam os CSVs fornecidos, fontes sintéticas e
 clientes simulados; não comprovam a qualidade das respostas do modelo.
@@ -322,7 +334,7 @@ respostas geradas.
 - A busca textual não garante compreensão de sinônimos ou perguntas com vários assuntos.
   O extrator é adequado ao PDF fornecido, sem OCR, e exige revisão se sua estrutura mudar.
 - Seções completas preservam condições no retorno, mas o modelo ainda pode omiti-las
-  na resposta. Citações no rodapé são adicionadas pela aplicação e não garantem fidelidade.
+  na resposta. As referências internas não garantem fidelidade de todas as frases geradas.
 - Descontinuados e lançamentos foram testados nas funções; as conversas reais não
   cobrem todos esses estados nem todas as falhas.
 - A identidade de clientes é simulada: quem executa a CLI pode escolher qualquer ID.

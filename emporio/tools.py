@@ -33,17 +33,28 @@ TOOLS = [{"type": "function", "function": {
         "required": ["pergunta"], "additionalProperties": False},
 }}, {"type": "function", "function": {
     "name": "consultar_pedido",
-    "description": "Consulta um pedido do cliente da sessão. Somente leitura; não cancela, troca ou devolve. Não aceita identidade do cliente.",
+    "description": "Consulta um pedido do cliente da sessão por número OU código de rastreio. Informe somente um identificador. Somente leitura, sem consulta à transportadora; não aceita identidade do cliente.",
     "parameters": {"type": "object", "properties": {
-        "pedido_id": {"type": "string", "pattern": "^[0-9]{1,12}$", "description": "Número do pedido, apenas dígitos."}},
-        "required": ["pedido_id"], "additionalProperties": False},
+        "pedido_id": {"type": "string", "pattern": "^[0-9]{1,12}$", "description": "Número do pedido, apenas dígitos. Omita se usar rastreio."},
+        "codigo_rastreio": {"type": "string", "description": "Código alfanumérico recebido do cliente. Omita pedido_id; não deduza o número do pedido."}},
+        "additionalProperties": False},
 }}]
 
 
 def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None, orders=None) -> dict:
     if name == "consultar_pedido":
-        if not isinstance(arguments, dict) or set(arguments) != {"pedido_id"}:
-            return {"erro": "Informe apenas pedido_id. A identidade é definida pela aplicação."}
+        if not isinstance(arguments, dict) or set(arguments) - {"pedido_id", "codigo_rastreio"}:
+            return {"erro": "Informe apenas pedido_id ou codigo_rastreio. A identidade é definida pela aplicação."}
+        arguments = {key: value for key, value in arguments.items() if value != ""}
+        if len(arguments) != 1:
+            return {"erro": "Informe somente um identificador: pedido_id ou codigo_rastreio."}
+        if "codigo_rastreio" in arguments:
+            code = arguments["codigo_rastreio"]
+            if not isinstance(code, str) or not re.fullmatch(r"[A-Za-z0-9]{6,40}", code.strip()):
+                return {"erro": "codigo_rastreio deve conter de 6 a 40 letras ou dígitos, sem espaços internos."}
+            if orders is None:
+                return {"erro": "Consulta de pedidos indisponível: sessão não configurada pela aplicação."}
+            return orders.get_order_by_tracking(code)
         order_id = arguments["pedido_id"]
         if isinstance(order_id, str) and re.fullmatch(r"[0-9]{1,12}", order_id):
             order_id = int(order_id)

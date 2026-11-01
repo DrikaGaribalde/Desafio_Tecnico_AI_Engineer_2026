@@ -1,0 +1,92 @@
+[
+  {
+    "cliente_simulado": 3,
+    "pergunta": "BRAB1234567BR",
+    "resposta": "Olá! Eu encontrei o seu pedido com o código de rastreio BRAB1234567BR. O pedido foi entregue, mas infelizmente não temos informações sobre a data efetiva de recebimento, o canal da compra e as condições do produto. O total registrado é de R$ 11.499,00. Se você tiver mais alguma dúvida, por favor, pergunte!",
+    "resposta_bruta_modelo": "Olá! Eu encontrei o seu pedido com o código de rastreio BRAB1234567BR. O pedido foi entregue, mas infelizmente não temos informações sobre a data efetiva de recebimento, o canal da compra e as condições do produto. O total registrado é de R$ 11.499,00. Se você tiver mais alguma dúvida, por favor, pergunte!",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_pedido",
+        "argumentos": {
+          "codigo_rastreio": "BRAB1234567BR"
+        },
+        "resultado": {
+          "encontrado": true,
+          "fonte": "CSVs estáticos do desafio",
+          "pedido_id": 1,
+          "itens": [
+            {
+              "produto_id": 93,
+              "nome": "Martin D-28 Dreadnought Natural",
+              "quantidade": 1
+            }
+          ],
+          "status": "entregue",
+          "total_registrado_brl": "11499.00",
+          "previsao_entrega": "2025-10-25",
+          "rastreamento": "BRAB1234567BR",
+          "informacoes_ausentes": [
+            "data efetiva de recebimento",
+            "canal da compra",
+            "condições do produto"
+          ],
+          "observacao": "Somente consulta. Previsão não comprova recebimento. Total histórico não recalculado. Valores nulos significam não informado."
+        }
+      }
+    ],
+    "contexto": [
+      {
+        "prompt_tokens": 1823,
+        "output_tokens": 27,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 7483,
+        "mensagens_historico": 0
+      },
+      {
+        "prompt_tokens": 1513,
+        "output_tokens": 93,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 8294,
+        "mensagens_historico": 0
+      }
+    ]
+  },
+  {
+    "cliente_simulado": 7,
+    "pergunta": "BRAB1234567BR",
+    "resposta": "Pedido não localizado para o cliente desta sessão. Confira o número ou código de rastreio, ou procure o atendimento da loja.",
+    "resposta_bruta_modelo": "Olá! Infelizmente, não conseguimos encontrar o pedido com o código de rastreio BRAB1234567BR. Por favor, verifique se o número ou código de rastreio está correto e tente novamente. Se o problema persistir, você pode entrar em contato com o atendimento da loja para obter ajuda adicional.",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_pedido",
+        "argumentos": {
+          "codigo_rastreio": "BRAB1234567BR"
+        },
+        "resultado": {
+          "encontrado": false,
+          "mensagem": "Pedido não localizado para o cliente desta sessão. Confira o número ou código de rastreio, ou procure o atendimento da loja."
+        }
+      }
+    ],
+    "contexto": [
+      {
+        "prompt_tokens": 1823,
+        "output_tokens": 27,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 7483,
+        "mensagens_historico": 0
+      },
+      {
+        "prompt_tokens": 1398,
+        "output_tokens": 77,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 7901,
+        "mensagens_historico": 0
+      }
+    ]
+  }
+]
