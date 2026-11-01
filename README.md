@@ -16,9 +16,9 @@ possuem testes automatizados e conversas reais registradas, incluindo falhas obs
 Pedidos são restritos a um `customer_id` configurado pela aplicação. A identificação
 é simulada, sem autenticação real. O cadastro `customers.csv` não é carregado.
 
-## Escopo
+## Funcionalidades implementadas
 
-O agente deverá:
+O agente permite:
 
 - Consultar produtos, preços e disponibilidade.
 - Consultar promoções ativas.
@@ -107,7 +107,7 @@ registros mostram separadamente a resposta bruta do modelo e a resposta protegid
 | `emporio/__main__.py` | Entrada da CLI e encerramento |
 | `emporio/agent.py` | Histórico e ciclo de ferramentas |
 | `emporio/ollama_client.py` | Comunicação HTTP e erros do Ollama |
-| `emporio/tools.py` | Contrato, validação e execução de `buscar_produtos` |
+| `emporio/tools.py` | Contratos, validação e execução das três ferramentas |
 | `emporio/catalog.py` | Leitura dos CSVs, filtros e cálculos |
 | `emporio/orders.py` | Sessão simulada, autorização e dados mínimos dos pedidos |
 | `emporio/policies.py` | Recuperação de seções, dependências e ressalvas do manual |
@@ -119,14 +119,14 @@ registros mostram separadamente a resposta bruta do modelo e a resposta protegid
 | `scripts/evaluate_policies.py` | Conversas reais de políticas e métricas de contexto |
 | `scripts/evaluate_orders.py` | Conversas reais de pedidos, privacidade e devolução |
 
-## Dados utilizados
+## Materiais fornecidos
 
 | Arquivo | Finalidade |
 |---|---|
 | `categories.csv` | Categorias dos instrumentos |
 | `products.csv` | Catálogo, preços, estoque e especificações |
 | `promotions.csv` | Promoções e descontos |
-| `customers.csv` | Dados dos clientes |
+| `customers.csv` | Cadastro fornecido, mas não utilizado pela aplicação |
 | `orders.csv` | Dados e status dos pedidos |
 | `order_items.csv` | Produtos e quantidades dos pedidos |
 | políticas_da_loja.pdf | Regras e procedimentos de atendimento |
@@ -147,91 +147,60 @@ A tag `latest` pode apontar para outro artefato em uma instalação futura.
 ## Configuração e execução
 
 No PowerShell, abra a raiz deste repositório. Com Python 3.12 e Ollama instalados,
-verifique o serviço e o modelo:
+verifique se o modelo `llama3.1:latest` está disponível e o serviço está ativo:
 
 ```powershell
-py -3.12 --version
-ollama --version
 ollama list
 Invoke-RestMethod -Uri 'http://localhost:11434/api/version'
 ```
 
-O modelo `llama3.1:latest` precisa estar instalado. Nenhum modelo ou dependência
-é baixado automaticamente. Se o serviço estiver parado, abra o aplicativo Ollama
-ou execute `ollama serve` em outro terminal. Não foi necessário iniciar um segundo
-servidor no ambiente avaliado, pois o serviço já estava ativo.
+Se o serviço estiver parado, abra o aplicativo Ollama ou execute `ollama serve`
+em outro terminal. Nenhum modelo é baixado automaticamente.
 
-Crie o ambiente virtual local (a pasta `.venv/` já é ignorada pelo Git):
+Crie a `.venv` e execute usando seu interpretador, sem precisar ativar scripts:
 
 ```powershell
 py -3.12 -m venv .venv
-```
-
-O ambiente foi criado e verificado com Python 3.12.9. Para executar sem depender
-da ativação de scripts do PowerShell, use diretamente seu interpretador:
-
-```powershell
 .\.venv\Scripts\python.exe -m emporio --customer-id 3
 ```
 
-Para rodar os testes nesse ambiente:
+Digite sua pergunta e pressione Enter. Para encerrar, use `sair`, `/sair`, `exit`
+ou Ctrl+C. O histórico existe somente durante a sessão.
+
+O cliente simulado padrão é **3**: o pedido 1 pertence a ele, enquanto o pedido 2
+fica bloqueado. Para demonstrar o pedido 9, sem previsão ou rastreamento, altere
+o argumento para `--customer-id 6`. A identidade não muda pelo chat e **não
+constitui autenticação real**.
+
+O ambiente foi verificado com Python 3.12.9. A aplicação e os testes usam apenas
+a biblioteca padrão; `requirements.txt` contém somente comentários e não há
+`requirements-dev.txt`. Se desejar validar o arquivo, o comando abaixo foi
+verificado sem acessar um índice nem instalar pacotes:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m pip install --no-index -r requirements.txt
 ```
 
-A ativação é opcional, caso seja permitida no seu terminal:
+A `.venv/` é ignorada pelo Git e deve ser recriada por quem clonar o projeto.
+Não há credenciais ou variáveis de ambiente obrigatórias. O Ollama roda como
+serviço separado em `http://localhost:11434`.
+
+**Alternativas de execução:** a ativação com `.\.venv\Scripts\Activate.ps1`
+é opcional; se for bloqueada, use o interpretador direto acima. Sem ambiente
+virtual, também é possível usar `py -3.12 -m emporio --customer-id 3`.
+Para acentuação em redirecionamentos, acrescente `-X utf8` antes de `-m`.
+No VS Code, selecione `.venv\Scripts\python.exe` em **Python: Select Interpreter**.
+
+O arquivo `data/politicas_secoes.json` já está preparado e vinculado ao PDF por
+SHA-256. Somente se alterar o manual, regenere e revise a extração:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-python -m emporio --customer-id 3
+.\.venv\Scripts\python.exe -m scripts.extract_policies
 ```
 
-Na sessão de preparação, `Activate.ps1` foi bloqueado; o interpretador direto
-funcionou. Não foi alterada a política de execução do PowerShell. No VS Code,
-use **Python: Select Interpreter** e selecione `.venv\Scripts\python.exe`.
-O ambiente isola os pacotes Python; o Ollama continua como serviço separado.
-
-Sem ambiente virtual, a aplicação também pode ser iniciada com o comando verificado:
-
-```powershell
-py -3.12 -m emporio
-```
-
-O cliente simulado padrão é **3**, exibido ao iniciar. Para escolher outro cliente
-antes de iniciar a sessão:
-
-```powershell
-py -3.12 -X utf8 -m emporio --customer-id 3
-```
-
-Esse comando foi verificado com consulta real ao pedido 1 e encerramento com `sair`.
-O pedido 1 pertence ao cliente 3; o pedido 2 não fica acessível nessa sessão.
-O cliente 6 permite demonstrar o pedido 9, sem rastreamento nem previsão.
-A identidade não pode ser alterada pelo chat. **A opção de terminal é uma simulação,
-não comprova quem é o usuário**; não utilizar com dados reais ou como autenticação.
-
-Digite sua pergunta e pressione Enter. Use `sair`, `/sair`, `exit` ou Ctrl+C para
-encerrar. O histórico é descartado ao sair. O comando foi verificado com uma
-pergunta real sobre o Takamine GD20 e encerramento com `sair`.
-
-Não é necessário executar `pip install`; esta etapa usa somente a biblioteca
-padrão. Não há variáveis de ambiente obrigatórias nem credenciais. A CLI usa
-`http://localhost:11434` e `llama3.1:latest`. O ambiente virtual é recomendado,
-embora opcional; a pasta local deve ser recriada por quem clonar o projeto.
-Se houver problemas de acentuação em terminais ou redirecionamentos, use
-`py -3.12 -X utf8 -m emporio`, também verificado.
-
-O arquivo `data/politicas_secoes.json` já está preparado. A aplicação verifica seu
-vínculo com o PDF por SHA-256. Se o PDF mudar, regenere e revise a extração:
-
-```powershell
-py -3.12 -m scripts.extract_policies
-```
-
-Esse comando foi executado usando `pdftotext` disponível no PATH do ambiente.
-Somente a regeneração exige esse executável (Poppler); a execução normal não.
-Não houve instalação de dependências ou download de modelos nesta integração.
+A regeneração exige `pdftotext` (Poppler) no PATH. Esse executável e o Ollama
+não são pacotes Python e não entram em `requirements.txt`. A execução normal
+usa o arquivo derivado e não exige Poppler.
 
 ## Regras e suposições
 
@@ -264,60 +233,45 @@ devolução, reembolso ou encaminhamento real.
 
 ## Testes e avaliação
 
-Para executar os testes das funções, sem Ollama nem dependências externas:
+Execute a suíte local, sem precisar do Ollama:
 
 ```powershell
-py -3.12 -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Foram executados 48 testes com sucesso, cobrindo consultas, filtros,
-disponibilidade, promoções, cálculos, argumentos inválidos, limite de ferramentas,
-histórico, erros HTTP, dados ausentes ou inválidos, políticas, referências,
-exceções, orçamento de contexto, autorização dos pedidos e identidade da sessão.
-Os testes usam a base fornecida e CSVs sintéticos em diretórios temporários.
+**48 testes passaram**, cobrindo filtros, disponibilidade, promoções, cálculos,
+dados ausentes, políticas e referências, contexto, autorização dos pedidos e
+identidade da sessão. Os testes usam os CSVs fornecidos, fontes sintéticas e
+clientes simulados; não comprovam a qualidade das respostas do modelo.
 
-Os testes de orquestração usam um cliente simulado, não comprovam a qualidade do
-modelo. Para executar as cinco conversas reais com o Ollama local:
+Para executar avaliações reais com o Ollama:
 
 ```powershell
-py -3.12 -m scripts.evaluate_catalog
+.\.venv\Scripts\python.exe -m scripts.evaluate_catalog
+.\.venv\Scripts\python.exe -X utf8 -m scripts.evaluate_policies --rodada rodada-06
+.\.venv\Scripts\python.exe -X utf8 -m scripts.evaluate_orders --rodada rodada-05
 ```
 
-Esse comando foi executado e grava os diálogos, argumentos, resultados e tempos
-em `docs/conversas/`, substituindo os registros anteriores nessa pasta. As rodadas
-iniciais com falhas foram preservadas em `docs/avaliacoes/`.
+O primeiro comando substitui os exemplos em `docs/conversas/`; use `--saida`
+para gravar em outra pasta. Os scripts de políticas e pedidos recusam sobrescrever
+rodadas: escolha um identificador novo. Os nomes acima são sugestões para a próxima
+execução; as últimas rodadas registradas são `rodada-05` de políticas e
+`rodada-04` de pedidos.
 
-Para avaliar políticas com o modelo e registrar tokens, ferramentas e respostas:
+Os registros preservam ferramentas, argumentos, resultados, tempos, respostas brutas
+e intervenções da aplicação. Resultados, falhas e evolução dos experimentos estão em:
 
-```powershell
-py -3.12 -X utf8 -m scripts.evaluate_policies --rodada rodada-06
-```
+- [Avaliação inicial de produtos](docs/avaliacoes/README.md).
+- [Políticas e orçamento de contexto](docs/avaliacoes/politicas/README.md).
+- [Pedidos, autorização e devolução](docs/avaliacoes/pedidos/README.md).
 
-As rodadas `rodada-01` a `rodada-05` foram executadas. Escolha um identificador
-novo: o script recusa sobrescrever uma rodada existente. Ele grava em
-`docs/avaliacoes/politicas/`. O parâmetro mostrado permite uma nova execução;
-o comando efetivamente usado na rodada final foi o mesmo com `--rodada rodada-05`.
-
-Para avaliar os cinco cenários de pedidos (incluindo tentativa de troca de identidade):
-
-```powershell
-py -3.12 -X utf8 -m scripts.evaluate_orders --rodada rodada-05
-```
-
-As rodadas de pedidos `rodada-01` a `rodada-04` já foram executadas; use um nome novo
-para reproduzir. O script grava em `docs/avaliacoes/pedidos/` sem sobrescrever rodadas.
-A rodada final registrada foi executada com `--rodada rodada-04`.
-
-No teste inicial, o modelo solicitou corretamente a ferramenta
-e utilizou os dados retornados. Entretanto, não informou que
-os retornos simulados eram dados de teste.
-
-Esse experimento preliminar utilizou um mapeamento explícito entre nome e ID.
-As conversas da implementação atual usam busca por nome sem esse mapeamento.
+As avaliações são execuções reais em versões sucessivas, não um benchmark nem
+garantia de consistência. O experimento preliminar usava um mapeamento explícito
+entre nome e ID; a implementação atual busca produtos por nome, sem esse mapeamento.
 
 ## Exemplos de interação
 
-Conversas reais executadas com o mesmo agente usado pela CLI:
+Cinco conversas reais registradas com o agente:
 
 1. [Preço do Takamine GD20](docs/conversas/01-preco.md).
 2. [Violões disponíveis até R$ 1.000](docs/conversas/02-orcamento.md).
@@ -325,23 +279,10 @@ Conversas reais executadas com o mesmo agente usado pela CLI:
 4. [Promoção ativa e preço calculado](docs/conversas/04-promocao.md).
 5. [Continuidade sobre produto apresentado](docs/conversas/05-continuidade.md).
 
-Os cinco cenários atenderam aos critérios de dados na rodada final: Takamine a
-R$ 2.199,00; lista filtrada com dez das doze opções; item sem estoque identificado
-como indisponível; promoção de 10% de R$ 359,00 para R$ 323,10; continuidade com
-nova consulta do produto correto. Cada turno levou aproximadamente 5 a 9 segundos
-com o modelo carregado. Não é um benchmark nem uma garantia de consistência.
-
-Veja a [avaliação das rodadas e limitações](docs/avaliacoes/README.md).
-
-Os seis cenários de políticas, as respostas reais e a medição do contexto estão em
-[avaliação de políticas](docs/avaliacoes/politicas/README.md). O horário regular foi
-respondido corretamente, mas houve omissão de exceções; a consulta mista executou as
-duas ferramentas, com limitações de apresentação registradas. Não é aprovação irrestrita
-de todas as respostas. Os exemplos anteriores de produtos são registros históricos.
-
-Os cinco cenários de pedidos, as respostas brutas e as proteções da aplicação estão na
-[avaliação de pedidos](docs/avaliacoes/pedidos/README.md). A consulta de produtos foi
-repetida após adicionar a terceira ferramenta, preservando os registros anteriores.
+Esses exemplos são registros históricos da etapa de catálogo. Os testes posteriores
+de produtos, políticas e pedidos, incluindo omissões e proteções da aplicação,
+estão nas avaliações vinculadas acima. Não há aprovação irrestrita de todas as
+respostas geradas.
 
 ## Limitações conhecidas
 
@@ -383,15 +324,7 @@ das limitações observadas.
 Utilizei o ChatGPT para interpretar o enunciado, discutir
 alternativas de arquitetura e organizar as etapas do projeto.
 
-O Codex apoiou a inspeção do ambiente, o experimento com Ollama, a documentação
-e a implementação da CLI, cliente Ollama, ferramenta, catálogo e testes. Também
-executou as conversas reais, inspecionou as falhas, ajustou o contrato e as instruções
-e documentou os resultados, incluindo as rodadas malsucedidas.
-Na integração das políticas, também preparou o extrator e o arquivo derivado,
-implementou busca e orçamento de contexto e executou avaliações reais com métricas.
-Na consulta de pedidos, implementou a sessão simulada, autorização, normalização dos
-argumentos e proteções de resposta, além de testes e conversas reais. As falhas iniciais
-e intervenções da aplicação foram documentadas.
+O Codex apoiou em todas as etapas do projeto.
 
 Esta seção será atualizada conforme a participação das ferramentas
 na implementação, revisão e testes.
