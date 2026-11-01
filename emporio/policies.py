@@ -12,8 +12,14 @@ class PolicyDataError(ValueError):
     pass
 
 
+WHATSAPP_ADOTADO = "(67) 3341-4444"
+
+
 # Termos de recuperação, não respostas prontas. Textos vêm do PDF.
 TOPICS = {
+    "1.2": ("telefone", "contato", "endereco", "email"),
+    "7": ("whatsapp", "whats", "zap"),
+    "1": ("acessor", "cabo", "palheta", "cordas para", "jogo de cordas", "case", "pedal", "amplificador"),
     "2": ("horario", "sabado", "domingo", "feriado", "abre", "fecha", "expediente"),
     "3": ("pagamento", "pagar", "pix", "boleto", "debito", "credito", "cartao"),
     "3.1": ("parcel", "12x", "6x", "3x", "juros", "prestac"),
@@ -31,6 +37,7 @@ TOPICS = {
 }
 
 DEPENDENCIES = {
+    "7": ("1.2",),
     "3": ("3.1", "6.2"), "3.1": ("3",),
     "4.2": ("4.4", "8.1", "8.2", "8.3"),
     "4.3": ("4.4",), "8.1": ("8.2", "8.3", "4.2"),
@@ -102,6 +109,11 @@ class PolicyStore:
         result = {"encontrado": True, "suficiente": True, "fonte": self.source,
                   "secoes": sections,
                   "ressalvas": [NOTES[key] for key in selected if key in NOTES]}
+        if any(key in selected for key in ("1.2", "7")):
+            result["decisoes_confirmadas"] = {
+                "whatsapp": WHATSAPP_ADOTADO,
+                "origem": "Decisão explícita do autor do projeto em 01/11/2026: priorizar este número diante dos contatos divergentes do PDF.",
+            }
         # Nunca corta uma regra ou omite uma dependência para caber: pede pergunta mais específica.
         if len(json.dumps(result, ensure_ascii=False)) > max_chars:
             return {"encontrado": True, "suficiente": False, "secoes": [],
