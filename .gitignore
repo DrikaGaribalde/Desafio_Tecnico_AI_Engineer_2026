@@ -46,3 +46,7 @@ Desktop.ini
 
 # Arquivos temporários de notebooks
 .ipynb_checkpoints/
+
+# Instruções locais e documento do desafio
+/AGENTS.md
+/desafio_tecnico_ai_eng_artefact.pdf
