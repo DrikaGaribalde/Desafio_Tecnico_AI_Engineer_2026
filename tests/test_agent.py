@@ -18,6 +18,12 @@ class ToolTests(unittest.TestCase):
         self.assertEqual(result["total"], 1)
         self.assertEqual(result["produtos"][0]["preco_final_brl"], "2199.00")
 
+    def test_empty_optional_filters_mean_no_constraint(self):
+        result = execute_tool(self.catalog, "buscar_produtos", {
+            "nome": "Takamine GD20", "categoria": "", "preco_maximo": ""})
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["produtos"][0]["preco_final_brl"], "2199.00")
+
     def test_category_and_price(self):
         result = execute_tool(self.catalog, "buscar_produtos", {
             "categoria": "violoes", "preco_maximo": "1000", "disponibilidade": "disponiveis"})
