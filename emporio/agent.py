@@ -9,7 +9,7 @@ from emporio.tools import TOOLS, execute_tool
 
 
 class Agent:
-    def __init__(self, catalog, client, max_tool_calls=3, policies=None):
+    def __init__(self, catalog, client, max_tool_calls=3, policies=None, orders=None):
         self.catalog = catalog
         self.client = client
         self.max_tool_calls = max_tool_calls
@@ -17,6 +17,7 @@ class Agent:
         self.last_trace = []
         self.last_usage = []
         self.policies = policies
+        self.orders = orders
         self.last_model_answer = None
 
     def reply(self, text):
@@ -55,9 +56,31 @@ class Agent:
                     answer = message.get("content", "").strip()
                     if not answer:
                         raise OllamaError("O modelo não produziu uma resposta. Tente reformular a pergunta.")
-                    current.append(message)
-                    self.turns = (self.turns + [current])[-4:]
                     self.last_model_answer = answer
+                    # Não depender da redação do LLM para autorizar acesso ou
+                    # concluir elegibilidade quando a própria base não tem os dados.
+                    order_results = [trace["resultado"] for trace in self.last_trace
+                                     if trace["ferramenta"] == "consultar_pedido"]
+                    return_sections = [section for trace in self.last_trace
+                                       if trace["ferramenta"] == "consultar_politicas"
+                                       for section in trace["resultado"].get("secoes", [])
+                                       if section["id"] == "4.1"]
+                    denied = next((result for result in order_results if result.get("encontrado") is False), None)
+                    owned = next((result for result in order_results if result.get("encontrado") is True), None)
+                    if denied is not None:
+                        answer = denied["mensagem"]
+                    elif owned is not None and return_sections:
+                        answer = (
+                            f"Para avaliar a devolução do pedido {owned['pedido_id']}, ainda preciso saber:\n"
+                            "1. A compra foi online ou presencial?\n"
+                            "2. Em que data você recebeu efetivamente o produto?\n"
+                            "3. Ele está sem uso, na embalagem original, com acessórios e manuais?\n\n"
+                            "A previsão de entrega não comprova a data de recebimento. "
+                            "Não é possível confirmar elegibilidade com os dados disponíveis.\n\n"
+                            "Para compras online, o manual informa:\n" + return_sections[0]["texto"]
+                        )
+                    current.append({**message, "content": answer})
+                    self.turns = (self.turns + [current])[-4:]
                     references = list(dict.fromkeys(
                         section["referencia"] for trace in self.last_trace
                         if trace["ferramenta"] == "consultar_politicas"
@@ -73,7 +96,7 @@ class Agent:
                     function = call.get("function", {}) if isinstance(call, dict) else {}
                     name = function.get("name", "") if isinstance(function, dict) else ""
                     arguments = function.get("arguments", {}) if isinstance(function, dict) else {}
-                    result = execute_tool(self.catalog, name, arguments, self.policies)
+                    result = execute_tool(self.catalog, name, arguments, self.policies, self.orders)
                     self.last_trace.append({"ferramenta": name, "argumentos": arguments, "resultado": result})
                     current.append({"role": "tool", "tool_name": name,
                                     "content": json.dumps(result, ensure_ascii=False, separators=(",", ":"))})

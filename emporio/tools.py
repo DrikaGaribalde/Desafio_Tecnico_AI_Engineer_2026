@@ -1,6 +1,7 @@
 """Contrato e execução das ferramentas autorizadas."""
 
 from decimal import Decimal, InvalidOperation
+import re
 
 from emporio.catalog import Catalog
 from emporio.policies import PolicyDataError, PolicyStore
@@ -30,10 +31,27 @@ TOOLS = [{"type": "function", "function": {
     "parameters": {"type": "object", "properties": {
         "pergunta": {"type": "string", "description": "Pergunta completa e específica sobre a política."}},
         "required": ["pergunta"], "additionalProperties": False},
+}}, {"type": "function", "function": {
+    "name": "consultar_pedido",
+    "description": "Consulta um pedido do cliente da sessão. Somente leitura; não cancela, troca ou devolve. Não aceita identidade do cliente.",
+    "parameters": {"type": "object", "properties": {
+        "pedido_id": {"type": "string", "pattern": "^[0-9]{1,12}$", "description": "Número do pedido, apenas dígitos."}},
+        "required": ["pedido_id"], "additionalProperties": False},
 }}]
 
 
-def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None) -> dict:
+def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None, orders=None) -> dict:
+    if name == "consultar_pedido":
+        if not isinstance(arguments, dict) or set(arguments) != {"pedido_id"}:
+            return {"erro": "Informe apenas pedido_id. A identidade é definida pela aplicação."}
+        order_id = arguments["pedido_id"]
+        if isinstance(order_id, str) and re.fullmatch(r"[0-9]{1,12}", order_id):
+            order_id = int(order_id)
+        if type(order_id) is not int or not 0 < order_id < 10**12:
+            return {"erro": "pedido_id deve ser um inteiro positivo ou texto de até 12 dígitos."}
+        if orders is None:
+            return {"erro": "Consulta de pedidos indisponível: sessão não configurada pela aplicação."}
+        return orders.get_order(order_id)
     if name == "consultar_politicas":
         if (not isinstance(arguments, dict) or set(arguments) != {"pergunta"}
                 or not isinstance(arguments["pergunta"], str)
@@ -56,7 +74,7 @@ def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None) ->
     if not isinstance(availability, str) or availability not in {"todas", "disponiveis"}:
         return {"erro": "disponibilidade deve ser todas ou disponiveis."}
     maximum = None
-    if "preco_maximo" in arguments:
+    if "preco_maximo" in arguments and arguments["preco_maximo"] != "":
         value = arguments["preco_maximo"]
         if type(value) not in (str, int, float) or len(str(value)) > 30:
             return {"erro": "preco_maximo deve ser um decimal não negativo."}

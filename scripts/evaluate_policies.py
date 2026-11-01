@@ -8,6 +8,7 @@ from time import perf_counter
 
 from emporio.agent import Agent
 from emporio.catalog import Catalog
+from emporio.context import CONTEXT_TOKENS
 from emporio.ollama_client import OllamaClient
 from emporio.policies import PolicyStore
 
@@ -36,7 +37,7 @@ def main():
     for name, questions in SCENARIOS:
         agent = Agent(Catalog(), OllamaClient(), policies=store)
         lines = [f"# Conversa real — {name}", "", f"Execução UTC: {datetime.now(timezone.utc).isoformat()}",
-                 "Modelo: llama3.1:latest; contexto: 8192; temperatura: 0; saída máxima: 768.", ""]
+                 f"Modelo: llama3.1:latest; contexto: {CONTEXT_TOKENS}; temperatura: 0; saída máxima: 768.", ""]
         for question in questions:
             start = perf_counter()
             answer = agent.reply(question)

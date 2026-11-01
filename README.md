@@ -10,10 +10,11 @@ pedidos e políticas da loja com base nos materiais fornecidos.
 ## Status do projeto
 
 CLI funcional com histórico em memória, `llama3.1:latest` via Ollama e ferramentas
-de produtos e políticas. As consultas, cálculos, recuperação de seções e controles
+de produtos, políticas e pedidos. As consultas, cálculos, recuperação de seções e controles
 possuem testes automatizados e conversas reais registradas, incluindo falhas observadas.
 
-Pedidos ainda não estão implementados. Não há leitura dos dados de clientes pelo agente.
+Pedidos são restritos a um `customer_id` configurado pela aplicação. A identificação
+é simulada, sem autenticação real. O cadastro `customers.csv` não é carregado.
 
 ## Escopo
 
@@ -58,6 +59,8 @@ O contrato da ferramenta e os controles da primeira etapa estão na
 [ADR 0002 — Catálogo e execução de ferramentas](docs/adr/0002-catalogo-e-ferramentas.md).
 A integração das políticas, as ambiguidades e o novo orçamento estão na
 [ADR 0003 — Consulta às políticas](docs/adr/0003-consulta-as-politicas.md).
+A identidade simulada, autorização e proteção na consulta de pedidos estão na
+[ADR 0004 — Consulta de pedidos](docs/adr/0004-consulta-de-pedidos.md).
 
 ## Arquitetura e estratégia de prompt
 
@@ -79,7 +82,7 @@ bytes UTF-8 do prompt completo mais margem de template e reserva de saída.
 Turnos antigos são removidos inteiros se necessário; fontes não são cortadas.
 Se ainda não couber, a aplicação pede uma pergunta mais específica.
 
-Contexto configurado: **8.192 tokens**; temperatura: 0; saída: até 768 tokens por chamada;
+Contexto configurado: **12.288 tokens**; temperatura: 0; saída: até 768 tokens por chamada;
 timeout HTTP: 120 segundos. A API informa os tokens efetivos de cada chamada para
 avaliação. A estimativa local é conservadora, não um tokenizador exato.
 Turnos incompletos não entram no histórico.
@@ -90,6 +93,15 @@ inclui título, conteúdo completo e referência; sem evidência ou orçamento, 
 insuficiência. O limite por resultado é 4.400 caracteres, sujeito também ao orçamento
 total do turno. A aplicação acrescenta o rodapé das fontes efetivamente consultadas.
 
+`consultar_pedido(pedido_id)` valida em Python se o proprietário é o cliente da sessão
+antes de relacionar itens e produtos. O modelo não recebe argumento para escolher a
+identidade. Pedidos alheios e inexistentes têm a mesma resposta, sem exposição de dados.
+O total vem do registro histórico, sem usar preços atuais. Previsão não é recebimento.
+
+Na consulta conjunta de pedido autorizado e política de arrependimento, a aplicação
+pede os dados ausentes e apresenta a seção recuperada, sem aprovar devolução. Os
+registros mostram separadamente a resposta bruta do modelo e a resposta protegida.
+
 | Arquivo | Responsabilidade |
 | --- | --- |
 | `emporio/__main__.py` | Entrada da CLI e encerramento |
@@ -97,6 +109,7 @@ total do turno. A aplicação acrescenta o rodapé das fontes efetivamente consu
 | `emporio/ollama_client.py` | Comunicação HTTP e erros do Ollama |
 | `emporio/tools.py` | Contrato, validação e execução de `buscar_produtos` |
 | `emporio/catalog.py` | Leitura dos CSVs, filtros e cálculos |
+| `emporio/orders.py` | Sessão simulada, autorização e dados mínimos dos pedidos |
 | `emporio/policies.py` | Recuperação de seções, dependências e ressalvas do manual |
 | `emporio/context.py` | Estimativa conservadora do orçamento de contexto |
 | `emporio/prompts.py` | Persona, limites e instruções do modelo |
@@ -104,6 +117,7 @@ total do turno. A aplicação acrescenta o rodapé das fontes efetivamente consu
 | `scripts/evaluate_catalog.py` | Conversas reais reproduzíveis e registro das ferramentas |
 | `scripts/extract_policies.py` | Preparação das seções a partir do PDF |
 | `scripts/evaluate_policies.py` | Conversas reais de políticas e métricas de contexto |
+| `scripts/evaluate_orders.py` | Conversas reais de pedidos, privacidade e devolução |
 
 ## Dados utilizados
 
@@ -147,11 +161,55 @@ O modelo `llama3.1:latest` precisa estar instalado. Nenhum modelo ou dependênci
 ou execute `ollama serve` em outro terminal. Não foi necessário iniciar um segundo
 servidor no ambiente avaliado, pois o serviço já estava ativo.
 
-Inicie a aplicação com o comando verificado:
+Crie o ambiente virtual local (a pasta `.venv/` já é ignorada pelo Git):
+
+```powershell
+py -3.12 -m venv .venv
+```
+
+O ambiente foi criado e verificado com Python 3.12.9. Para executar sem depender
+da ativação de scripts do PowerShell, use diretamente seu interpretador:
+
+```powershell
+.\.venv\Scripts\python.exe -m emporio --customer-id 3
+```
+
+Para rodar os testes nesse ambiente:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+A ativação é opcional, caso seja permitida no seu terminal:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m emporio --customer-id 3
+```
+
+Na sessão de preparação, `Activate.ps1` foi bloqueado; o interpretador direto
+funcionou. Não foi alterada a política de execução do PowerShell. No VS Code,
+use **Python: Select Interpreter** e selecione `.venv\Scripts\python.exe`.
+O ambiente isola os pacotes Python; o Ollama continua como serviço separado.
+
+Sem ambiente virtual, a aplicação também pode ser iniciada com o comando verificado:
 
 ```powershell
 py -3.12 -m emporio
 ```
+
+O cliente simulado padrão é **3**, exibido ao iniciar. Para escolher outro cliente
+antes de iniciar a sessão:
+
+```powershell
+py -3.12 -X utf8 -m emporio --customer-id 3
+```
+
+Esse comando foi verificado com consulta real ao pedido 1 e encerramento com `sair`.
+O pedido 1 pertence ao cliente 3; o pedido 2 não fica acessível nessa sessão.
+O cliente 6 permite demonstrar o pedido 9, sem rastreamento nem previsão.
+A identidade não pode ser alterada pelo chat. **A opção de terminal é uma simulação,
+não comprova quem é o usuário**; não utilizar com dados reais ou como autenticação.
 
 Digite sua pergunta e pressione Enter. Use `sair`, `/sair`, `exit` ou Ctrl+C para
 encerrar. O histórico é descartado ao sair. O comando foi verificado com uma
@@ -159,7 +217,8 @@ pergunta real sobre o Takamine GD20 e encerramento com `sair`.
 
 Não é necessário executar `pip install`; esta etapa usa somente a biblioteca
 padrão. Não há variáveis de ambiente obrigatórias nem credenciais. A CLI usa
-`http://localhost:11434` e `llama3.1:latest`. Um ambiente virtual é opcional.
+`http://localhost:11434` e `llama3.1:latest`. O ambiente virtual é recomendado,
+embora opcional; a pasta local deve ser recriada por quem clonar o projeto.
 Se houver problemas de acentuação em terminais ou redirecionamentos, use
 `py -3.12 -X utf8 -m emporio`, também verificado.
 
@@ -182,6 +241,7 @@ Regras implementadas em `emporio/catalog.py`:
 - A busca combina termos no nome, categoria e descrição, ignorando caixa e acentos.
   Descrições inconsistentes da fonte podem afetar os resultados; não há correção automática.
 - O teto de preço é inclusivo e usa o preço promocional, sem desconto PIX.
+  Filtros textuais opcionais vazios significam ausência de restrição.
 - Promoções são consideradas ativas por `is_active`, pois não há datas de vigência.
   Se houver mais de uma ativa para o produto, aplica-se somente o maior desconto;
   essa é uma suposição do protótipo, não uma regra explícita do manual.
@@ -196,7 +256,11 @@ Ressalvas do manual ficam separadas dos trechos literais: o frete de exatamente
 R$ 500 não é definido; parcelamento contém divergências; exclusões de troca não
 devem ser importadas automaticamente para arrependimento online. A aplicação não
 escolhe silenciosamente uma regra para preencher essas lacunas.
-A identificação de clientes permanece pendente, junto da consulta a pedidos.
+A identificação é simulada por `--customer-id`; autenticação real permanece pendente.
+Nos pedidos, itens são relacionados pelo ID do produto somente para nome e quantidade.
+O total registrado não é reconstruído com o catálogo. Campos ausentes são informados
+sem valores presumidos. As ferramentas são somente leitura, sem cancelamento, troca,
+devolução, reembolso ou encaminhamento real.
 
 ## Testes e avaliação
 
@@ -206,10 +270,10 @@ Para executar os testes das funções, sem Ollama nem dependências externas:
 py -3.12 -m unittest discover -s tests -v
 ```
 
-Foram executados 34 testes com sucesso, cobrindo consultas, filtros,
+Foram executados 48 testes com sucesso, cobrindo consultas, filtros,
 disponibilidade, promoções, cálculos, argumentos inválidos, limite de ferramentas,
 histórico, erros HTTP, dados ausentes ou inválidos, políticas, referências,
-exceções e orçamento de contexto.
+exceções, orçamento de contexto, autorização dos pedidos e identidade da sessão.
 Os testes usam a base fornecida e CSVs sintéticos em diretórios temporários.
 
 Os testes de orquestração usam um cliente simulado, não comprovam a qualidade do
@@ -233,6 +297,16 @@ As rodadas `rodada-01` a `rodada-05` foram executadas. Escolha um identificador
 novo: o script recusa sobrescrever uma rodada existente. Ele grava em
 `docs/avaliacoes/politicas/`. O parâmetro mostrado permite uma nova execução;
 o comando efetivamente usado na rodada final foi o mesmo com `--rodada rodada-05`.
+
+Para avaliar os cinco cenários de pedidos (incluindo tentativa de troca de identidade):
+
+```powershell
+py -3.12 -X utf8 -m scripts.evaluate_orders --rodada rodada-05
+```
+
+As rodadas de pedidos `rodada-01` a `rodada-04` já foram executadas; use um nome novo
+para reproduzir. O script grava em `docs/avaliacoes/pedidos/` sem sobrescrever rodadas.
+A rodada final registrada foi executada com `--rodada rodada-04`.
 
 No teste inicial, o modelo solicitou corretamente a ferramenta
 e utilizou os dados retornados. Entretanto, não informou que
@@ -265,6 +339,10 @@ respondido corretamente, mas houve omissão de exceções; a consulta mista exec
 duas ferramentas, com limitações de apresentação registradas. Não é aprovação irrestrita
 de todas as respostas. Os exemplos anteriores de produtos são registros históricos.
 
+Os cinco cenários de pedidos, as respostas brutas e as proteções da aplicação estão na
+[avaliação de pedidos](docs/avaliacoes/pedidos/README.md). A consulta de produtos foi
+repetida após adicionar a terceira ferramenta, preservando os registros anteriores.
+
 ## Limitações conhecidas
 
 - Dados estáticos, sem atualização por um sistema externo.
@@ -284,7 +362,11 @@ de todas as respostas. Os exemplos anteriores de produtos são registros histór
   na resposta. Citações no rodapé são adicionadas pela aplicação e não garantem fidelidade.
 - Descontinuados e lançamentos foram testados nas funções; as conversas reais não
   cobrem todos esses estados nem todas as falhas.
-- Identificação do cliente e restrição de acesso a pedidos ainda não implementadas.
+- A identidade de clientes é simulada: quem executa a CLI pode escolher qualquer ID.
+  A autorização restringe a sessão, mas não substitui autenticação real.
+- Não existe motor de elegibilidade ou estado estruturado para validar respostas sobre
+  devolução; a proteção conservadora pode repetir perguntas. Ela depende das ferramentas
+  chamadas no turno e não valida semanticamente todas as respostas possíveis.
 - Pedidos sem data efetiva de recebimento ou canal da compra; a previsão de entrega
   não permite concluir elegibilidade para devolução.
 
@@ -307,6 +389,9 @@ executou as conversas reais, inspecionou as falhas, ajustou o contrato e as inst
 e documentou os resultados, incluindo as rodadas malsucedidas.
 Na integração das políticas, também preparou o extrator e o arquivo derivado,
 implementou busca e orçamento de contexto e executou avaliações reais com métricas.
+Na consulta de pedidos, implementou a sessão simulada, autorização, normalização dos
+argumentos e proteções de resposta, além de testes e conversas reais. As falhas iniciais
+e intervenções da aplicação foram documentadas.
 
 Esta seção será atualizada conforme a participação das ferramentas
 na implementação, revisão e testes.
