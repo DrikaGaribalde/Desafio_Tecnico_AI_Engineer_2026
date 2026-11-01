@@ -1,0 +1,57 @@
+{
+  "pergunta": "Meu pedido e de exatamente R$ 500 para a regiao metropolitana de Campo Grande. O frete e gratis?",
+  "resposta": "Sim, o frete é grátis para pedidos da região metropolitana de Campo Grande, desde que o valor do pedido seja exatamente R$ 500 ou maior.\n\nFontes consultadas: políticas_da_loja.pdf, seção 5.1, página(s) 4.",
+  "resposta_bruta_modelo": "Sim, o frete é grátis para pedidos da região metropolitana de Campo Grande, desde que o valor do pedido seja exatamente R$ 500 ou maior.",
+  "ferramentas": [
+    {
+      "ferramenta": "consultar_politicas",
+      "argumentos": {
+        "pergunta": "O frete e gratis para pedidos da regiao metropolitana de Campo Grande?"
+      },
+      "resultado": {
+        "encontrado": true,
+        "suficiente": true,
+        "fonte": "políticas_da_loja.pdf",
+        "secoes": [
+          {
+            "id": "5.1",
+            "titulo": "Entregas na Região Metropolitana de Campo Grande",
+            "referencia": "políticas_da_loja.pdf, seção 5.1, página(s) 4",
+            "texto": "• Frete grátis para pedidos acima de R$ 500,00.\n• Para pedidos abaixo de R$ 500,00, taxa fixa de R$ 35,00.\n• Prazo de entrega: 1 a 3 dias úteis.\n• Entrega realizada por motoboy próprio. O cliente será contactado por telefone antes da\nentrega."
+          }
+        ],
+        "ressalvas": [
+          "A lacuna de exatamente R$ 500 foi resolvida pelo autor: na região metropolitana de Campo Grande, frete grátis para total maior ou igual a R$ 500; abaixo disso, R$ 35. Confirmar a região de destino; não aplicar essa regra a outras cidades."
+        ],
+        "decisoes_confirmadas": {
+          "frete_metropolitano": {
+            "regiao": "Região metropolitana de Campo Grande",
+            "limite_frete_gratis_brl": "500.00",
+            "limite_inclusivo": true,
+            "taxa_abaixo_do_limite_brl": "35.00",
+            "regra": "total >= 500.00: frete grátis; total < 500.00: R$ 35.00, somente nesta região.",
+            "origem": "Decisão explícita do autor em 01/11/2026, resolvendo a igualdade omitida no PDF."
+          }
+        }
+      }
+    }
+  ],
+  "contexto": [
+    {
+      "prompt_tokens": 1627,
+      "output_tokens": 39,
+      "limite_contexto": 12288,
+      "reserva_saida": 768,
+      "estimativa_conservadora_entrada": 6714,
+      "mensagens_historico": 0
+    },
+    {
+      "prompt_tokens": 1598,
+      "output_tokens": 39,
+      "limite_contexto": 12288,
+      "reserva_saida": 768,
+      "estimativa_conservadora_entrada": 8206,
+      "mensagens_historico": 0
+    }
+  ]
+}

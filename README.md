@@ -234,13 +234,18 @@ Regras implementadas em `emporio/catalog.py`:
   `CatalogDataError`, sem inventar valores padrão.
 - O catálogo é carregado em memória por instância, sem escrever nos CSVs originais.
 
-Ressalvas do manual ficam separadas dos trechos literais: o frete de exatamente
-R$ 500 não é definido; parcelamento contém divergências; exclusões de troca não
+Ressalvas do manual ficam separadas dos trechos literais: parcelamento contém
+divergências; exclusões de troca não
 devem ser importadas automaticamente para arrependimento online. A aplicação não
 escolhe silenciosamente uma regra para preencher essas lacunas.
 **WhatsApp adotado: (67) 3341-4444**, conforme decisão explícita do autor em
 01/11/2026. O PDF possui contatos divergentes; a escolha é retornada separadamente
 dos trechos originais, que foram preservados. Ver [ADR 0006](docs/adr/0006-contato-whatsapp.md).
+**Frete na região metropolitana de Campo Grande:** grátis para pedidos com total
+**maior ou igual a R$ 500**; abaixo desse valor, R$ 35. A inclusão da igualdade foi
+confirmada pelo autor em 01/11/2026 e é retornada em `decisoes_confirmadas`, sem
+reescrever o PDF. A regra não se aplica ao frete para outras cidades.
+Ver [ADR 0007](docs/adr/0007-limite-frete-metropolitano.md).
 A identificação é simulada por `--customer-id`; autenticação real permanece pendente.
 Nos pedidos, itens são relacionados pelo ID do produto somente para nome e quantidade.
 O total registrado não é reconstruído com o catálogo. Campos ausentes são informados

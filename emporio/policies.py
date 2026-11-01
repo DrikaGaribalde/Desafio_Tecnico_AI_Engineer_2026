@@ -48,7 +48,7 @@ NOTES = {
     "3.1": "A tabela 3 indica parcela mínima geral de R$ 100, mas 3.1 detalha outras faixas. Há divergência; não escolher uma regra silenciosamente. A expressão 'exceto abaixo de R$ 50' é ambígua. Confirmar com a loja antes de concluir condições específicas.",
     "4.1": "Não concluir elegibilidade sem data efetiva de recebimento e condições do produto. Pergunte quando recebeu e se está sem uso, na embalagem original, com acessórios e manuais. Não há nesta seção exclusão por personalização ou venda final; não inventar restrições.",
     "4.4": "Esta seção trata de troca. Sua aplicação a arrependimento online não está esclarecida no texto; não negar devolução automaticamente com base nela.",
-    "5.1": "O texto cobre acima e abaixo de R$ 500, mas não exatamente R$ 500. Nesse valor a regra é insuficiente: não afirmar frete grátis nem taxa de R$ 35. Solicitar confirmação à loja. Confirmar também região de destino.",
+    "5.1": "A lacuna de exatamente R$ 500 foi resolvida pelo autor: na região metropolitana de Campo Grande, frete grátis para total maior ou igual a R$ 500; abaixo disso, R$ 35. Confirmar a região de destino; não aplicar essa regra a outras cidades.",
     "5.2": "Sem CEP, peso e dimensões e sem integração de cotação, não calcular frete de outras cidades nem prometer prazo específico.",
     "6.2": "Não é permitido somar desconto PIX com promoção. Combinar meios de pagamento é diferente de acumular descontos. Não oferecer alternativas de preço não calculadas pela consulta de produtos.",
     "8.1": "Preservar a diferença entre troca em 30 dias após compra (4.2) e garantia de 90 dias após recebimento (8.1). Não concluir cobertura sem os dados necessários.",
@@ -114,10 +114,17 @@ class PolicyStore:
                 "whatsapp": WHATSAPP_ADOTADO,
                 "origem": "Decisão explícita do autor do projeto em 01/11/2026: priorizar este número diante dos contatos divergentes do PDF.",
             }
+        if "5.1" in selected:
+            result.setdefault("decisoes_confirmadas", {})["frete_metropolitano"] = {
+                "regiao": "Região metropolitana de Campo Grande",
+                "limite_frete_gratis_brl": "500.00",
+                "limite_inclusivo": True,
+                "taxa_abaixo_do_limite_brl": "35.00",
+                "regra": "total >= 500.00: frete grátis; total < 500.00: R$ 35.00, somente nesta região.",
+                "origem": "Decisão explícita do autor em 01/11/2026, resolvendo a igualdade omitida no PDF.",
+            }
         # Nunca corta uma regra ou omite uma dependência para caber: pede pergunta mais específica.
         if len(json.dumps(result, ensure_ascii=False)) > max_chars:
             return {"encontrado": True, "suficiente": False, "secoes": [],
                     "mensagem": "As seções completas excedem o orçamento. Peça uma pergunta mais específica; não responda sem o texto."}
-        if "5.1" in selected and re.search(r"(?:exatamente\s*(?:r\$\s*)?500|500\s*(?:reais)?\s*exat)", normalized):
-            result["suficiente"] = False
         return result

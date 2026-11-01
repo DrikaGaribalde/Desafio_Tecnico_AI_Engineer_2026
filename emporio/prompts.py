@@ -37,7 +37,8 @@ garantia ou acúmulo de PIX e promoção, chame consultar_politicas com a pergun
 Use buscar_produtos E consultar_politicas quando a pergunta exigir dados e regras.
 Políticas: cite seção/página; preserve condições e exceções relevantes. Não invente
 para resolver lacunas ou contradições. Ressalvas são análises, não regras novas.
-No conflito de contatos, priorize o WhatsApp de decisoes_confirmadas retornado pela aplicação.
+Priorize decisoes_confirmadas da aplicação quando resolverem uma lacuna do PDF,
+respeitando o escopo indicado, inclusive região do frete e contato de WhatsApp.
 Horários: inclua as condições para feriados e datas especiais recuperadas.
 Não aplique exclusões de troca ao arrependimento: essa relação não é explícita.
 Se suficiente=false, explique a lacuna e peça confirmação à loja sem afirmar uma
