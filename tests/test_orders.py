@@ -44,6 +44,31 @@ class OrderTests(unittest.TestCase):
         self.assertIsNone(result["previsao_entrega"])
         self.assertIsNone(result["rastreamento"])
 
+    def test_tracking_lookup_matches_owned_order(self):
+        result = self.orders.get_order_by_tracking(" brab1234567br ")
+        self.assertEqual(result, self.orders.get_order(1))
+        self.assertEqual(execute_tool(self.catalog, "consultar_pedido", {
+            "pedido_id": "", "codigo_rastreio": "BRAB1234567BR"}, orders=self.orders), result)
+
+    def test_foreign_tracking_is_indistinguishable_from_missing(self):
+        catalog = Mock(wraps=self.catalog)
+        store = OrderStore(catalog, Session(7))
+        self.assertEqual(store.get_order_by_tracking("BRAB1234567BR"), store.get_order_by_tracking("BRZZ0000000BR"))
+        self.assertEqual(store.get_order_by_tracking("BRAB1234567BR"), store.get_order(9999))
+        catalog.get_product.assert_not_called()
+
+    def test_tracking_arguments_reject_identity_and_multiple_identifiers(self):
+        for args in ({"pedido_id": "1", "codigo_rastreio": "BRAB1234567BR"},
+                     {"codigo_rastreio": "BRAB1234567BR", "customer_id": 3},
+                     {"codigo_rastreio": True}, {"codigo_rastreio": "BR AB1234567BR"},
+                     {"codigo_rastreio": ""}, {"codigo_rastreio": "x" * 41}):
+            with self.subTest(args=args):
+                self.assertIn("erro", execute_tool(self.catalog, "consultar_pedido", args, orders=self.orders))
+
+    def test_tracking_without_session_is_not_available(self):
+        result = execute_tool(self.catalog, "consultar_pedido", {"codigo_rastreio": "BRAB1234567BR"})
+        self.assertIn("sessão não configurada", result["erro"])
+
     def test_historical_total_is_not_current_catalog_total(self):
         result = OrderStore(self.catalog, Session(12)).get_order(3)
         self.assertEqual(result["itens"][0]["quantidade"], 2)

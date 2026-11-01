@@ -107,7 +107,8 @@ class AgentTests(unittest.TestCase):
         answer = agent.reply("Vocês vendem cabo para guitarra?")
         self.assertEqual(client.calls, 0)
         self.assertIn("não vende acessórios", answer)
-        self.assertIn("seção 1", answer)
+        self.assertNotIn("Fontes consultadas", answer)
+        self.assertIn("seção 1", agent.last_trace[0]["resultado"]["secoes"][0]["referencia"])
         self.assertIsNone(agent.last_model_answer)
         self.assertEqual(agent.last_trace[0]["origem"], "aplicacao")
 
@@ -119,6 +120,34 @@ class AgentTests(unittest.TestCase):
         answer = agent.reply("Vocês vendem cabo para guitarra?")
         self.assertIn("Não consegui confirmar", answer)
         self.assertNotIn("não vende acessórios", answer)
+
+    def test_accessory_exchange_checks_scope_before_return_rules(self):
+        agent = Agent(Catalog(), object())
+        answer = agent.reply("posso fazer a trocar de cordas e cabos")
+        self.assertIn("não vende acessórios", answer)
+        self.assertIn("não vou aplicar a política de troca de instrumentos", answer)
+        self.assertIn("não tenho informações para confirmar esse serviço", answer)
+        self.assertNotIn("7 dias", answer)
+        self.assertNotIn("Fontes consultadas", answer)
+        self.assertEqual([s["id"] for s in agent.last_trace[0]["resultado"]["secoes"]], ["1"])
+
+    def test_accessory_exchange_variations_are_not_approved(self):
+        for item in ("cordas", "cabos", "palhetas", "cases", "pedais", "amplificadores"):
+            with self.subTest(item=item):
+                agent = Agent(Catalog(), object())
+                answer = agent.reply(f"Posso trocar meus {item}?")
+                self.assertIn("não vende acessórios", answer)
+                self.assertNotIn("7 dias", answer)
+
+    def test_instrument_exchange_is_not_blocked_by_mention_of_strings(self):
+        for question in ("Posso trocar meu violão que veio com cordas e cabos?",
+                         "Vocês vendem instrumentos de cordas?", "Vocês vendem cordas orquestrais?"):
+            with self.subTest(question=question):
+                client = FakeClient([{"role": "assistant", "content": "Vou verificar."}])
+                agent = Agent(Catalog(), client)
+                agent.reply(question)
+                self.assertEqual(len(client.requests), 1)
+                self.assertEqual(agent.last_trace, [])
 
     def test_out_of_stock_does_not_offer_unimplemented_notification(self):
         client = FakeClient([
