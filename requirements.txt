@@ -1,0 +1,5 @@
+# Sem dependencias Python externas de execucao nesta versao.
+# Aplicacao e testes usam apenas a biblioteca padrao e modulos locais.
+# Python efetivamente testado: 3.12.9 (requisito do ambiente, nao pacote pip).
+# Ollama e um servico separado; pdftotext/Poppler so regenera as secoes do PDF.
+# Nao ha pacotes externos cujas versoes precisem ser fixadas aqui.
