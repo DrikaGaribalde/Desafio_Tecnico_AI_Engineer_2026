@@ -1,0 +1,50 @@
+{
+  "cliente": "O Giannini GF-3D está disponível?",
+  "resposta": "O Giannini GF-3D Dreadnought Sunburst está sem estoque na base fornecida. Quer que eu consulte modelos parecidos? O que você mais gostou nele?",
+  "resposta_bruta_modelo": "O Giannini GF-3D está indisponível. Infelizmente, não temos estoque disponível para esse produto. Se você estiver interessado em saber quando ele estará disponível novamente, posso sugerir que você entre em contato conosco para ser notificado quando o produto for reestocado.",
+  "ferramentas": [
+    {
+      "ferramenta": "buscar_produtos",
+      "argumentos": {
+        "nome": "Giannini GF-3D",
+        "disponibilidade": "todas"
+      },
+      "resultado": {
+        "fonte": "CSV estático do desafio",
+        "total": 1,
+        "limitado": false,
+        "produtos": [
+          {
+            "nome": "Giannini GF-3D Dreadnought Sunburst",
+            "categoria": "Violões",
+            "preco_original_brl": "799.90",
+            "desconto_percentual": "0",
+            "preco_final_brl": "799.90",
+            "disponibilidade": "sem estoque",
+            "disponivel_para_compra": false,
+            "estoque": 0
+          }
+        ]
+      }
+    }
+  ],
+  "contexto": [
+    {
+      "prompt_tokens": 1570,
+      "output_tokens": 33,
+      "limite_contexto": 12288,
+      "reserva_saida": 768,
+      "estimativa_conservadora_entrada": 6488,
+      "mensagens_historico": 0
+    },
+    {
+      "prompt_tokens": 1260,
+      "output_tokens": 70,
+      "limite_contexto": 12288,
+      "reserva_saida": 768,
+      "estimativa_conservadora_entrada": 7096,
+      "mensagens_historico": 0
+    }
+  ],
+  "observacao": "Execucao real; resposta de falta de estoque protegida pela aplicacao a partir do resultado do CSV."
+}

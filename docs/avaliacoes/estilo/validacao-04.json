@@ -1,0 +1,220 @@
+[
+  {
+    "cenario": "escolha-e-contexto",
+    "cliente": "Meu nome e Ana. Quero comprar um violão, mas não sei qual escolher.",
+    "resposta": "Olá Ana! Pra começar, você já toca violão ou está começando? E qual é o seu orçamento para o violão?",
+    "resposta_bruta_modelo": "Olá Ana! Pra começar, você já toca violão ou está começando? E qual é o seu orçamento para o violão?",
+    "ferramentas": [],
+    "contexto": [
+      {
+        "prompt_tokens": 1122,
+        "output_tokens": 33,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 4781,
+        "mensagens_historico": 0
+      }
+    ],
+    "segundos": 5.19
+  },
+  {
+    "cenario": "escolha-e-contexto",
+    "cliente": "Estou começando e posso gastar até R$ 700.",
+    "resposta": "Olá Ana! Com o seu orçamento de R$ 700, temos várias opções de violões para você escolher. Aqui estão algumas sugestões:\n\n1. Tagima Memphis AC-39 Nylon Natural - R$ 429,90\n2. Rozini RC-104 Nylon Estudante - R$ 459,90\n3. Shelby SN-100 Folk Aço Preto - R$ 549,00\n4. Giannini GF-1R Aço Folk Sunburst - R$ 579,90\n5. Yamaha C40 Nylon Natural - R$ 599,90\n6. Giannini GN-15 Nylon Cedr Natural - R$ 689,00\n7. Yamaha F310 Aço Natural - R$ 699,90\n\nEsses violões são todos disponíveis e têm estoque suficiente. Qual é o seu estilo musical favorito? Você prefere um violão de nylon ou aço?",
+    "resposta_bruta_modelo": "Olá Ana! Com o seu orçamento de R$ 700, temos várias opções de violões para você escolher. Aqui estão algumas sugestões:\n\n1. Tagima Memphis AC-39 Nylon Natural - R$ 429,90\n2. Rozini RC-104 Nylon Estudante - R$ 459,90\n3. Shelby SN-100 Folk Aço Preto - R$ 549,00\n4. Giannini GF-1R Aço Folk Sunburst - R$ 579,90\n5. Yamaha C40 Nylon Natural - R$ 599,90\n6. Giannini GN-15 Nylon Cedr Natural - R$ 689,00\n7. Yamaha F310 Aço Natural - R$ 699,90\n\nEsses violões são todos disponíveis e têm estoque suficiente. Qual é o seu estilo musical favorito? Você prefere um violão de nylon ou aço?",
+    "ferramentas": [
+      {
+        "ferramenta": "buscar_produtos",
+        "argumentos": {
+          "nome": "violão",
+          "categoria": "Violões",
+          "disponibilidade": "disponiveis",
+          "preco_maximo": "700.00"
+        },
+        "resultado": {
+          "fonte": "CSV estático do desafio",
+          "total": 7,
+          "limitado": false,
+          "produtos": [
+            {
+              "nome": "Tagima Memphis AC-39 Nylon Natural",
+              "categoria": "Violões",
+              "preco_original_brl": "429.90",
+              "desconto_percentual": "0",
+              "preco_final_brl": "429.90",
+              "disponibilidade": "disponível",
+              "disponivel_para_compra": true,
+              "estoque": 15
+            },
+            {
+              "nome": "Rozini RC-104 Nylon Estudante",
+              "categoria": "Violões",
+              "preco_original_brl": "459.90",
+              "desconto_percentual": "0",
+              "preco_final_brl": "459.90",
+              "disponibilidade": "disponível",
+              "disponivel_para_compra": true,
+              "estoque": 10
+            },
+            {
+              "nome": "Shelby SN-100 Folk Aço Preto",
+              "categoria": "Violões",
+              "preco_original_brl": "549.00",
+              "desconto_percentual": "0",
+              "preco_final_brl": "549.00",
+              "disponibilidade": "disponível",
+              "disponivel_para_compra": true,
+              "estoque": 5
+            },
+            {
+              "nome": "Giannini GF-1R Aço Folk Sunburst",
+              "categoria": "Violões",
+              "preco_original_brl": "579.90",
+              "desconto_percentual": "0",
+              "preco_final_brl": "579.90",
+              "disponibilidade": "disponível",
+              "disponivel_para_compra": true,
+              "estoque": 7
+            },
+            {
+              "nome": "Yamaha C40 Nylon Natural",
+              "categoria": "Violões",
+              "preco_original_brl": "599.90",
+              "desconto_percentual": "0",
+              "preco_final_brl": "599.90",
+              "disponibilidade": "disponível",
+              "disponivel_para_compra": true,
+              "estoque": 12
+            },
+            {
+              "nome": "Giannini GN-15 Nylon Cedr Natural",
+              "categoria": "Violões",
+              "preco_original_brl": "689.00",
+              "desconto_percentual": "0",
+              "preco_final_brl": "689.00",
+              "disponibilidade": "disponível",
+              "disponivel_para_compra": true,
+              "estoque": 6
+            },
+            {
+              "nome": "Yamaha F310 Aço Natural",
+              "categoria": "Violões",
+              "preco_original_brl": "699.90",
+              "desconto_percentual": "0",
+              "preco_final_brl": "699.90",
+              "disponibilidade": "disponível",
+              "disponivel_para_compra": true,
+              "estoque": 14
+            }
+          ]
+        }
+      }
+    ],
+    "contexto": [
+      {
+        "prompt_tokens": 1635,
+        "output_tokens": 56,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 6747,
+        "mensagens_historico": 2
+      },
+      {
+        "prompt_tokens": 1729,
+        "output_tokens": 204,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 8899,
+        "mensagens_historico": 2
+      }
+    ],
+    "segundos": 8.18
+  },
+  {
+    "cenario": "acessorio",
+    "cliente": "Vocês vendem cabo para guitarra?",
+    "resposta": "{\"name\": \"buscar_produtos\", \"parameters\": {\"nome\": \"cabo para guitarra\"}}",
+    "resposta_bruta_modelo": "{\"name\": \"buscar_produtos\", \"parameters\": {\"nome\": \"cabo para guitarra\"}}",
+    "ferramentas": [],
+    "contexto": [
+      {
+        "prompt_tokens": 1282,
+        "output_tokens": 22,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 5132,
+        "mensagens_historico": 0
+      }
+    ],
+    "segundos": 2.57
+  },
+  {
+    "cenario": "sem-estoque",
+    "cliente": "O Giannini GF-3D está disponível?",
+    "resposta": "O Giannini GF-3D está indisponível. Infelizmente, não temos estoque disponível para esse produto. Se você estiver interessado em saber quando ele estará disponível novamente, posso sugerir que você entre em contato conosco para ser notificado assim que ele for restocado.",
+    "resposta_bruta_modelo": "O Giannini GF-3D está indisponível. Infelizmente, não temos estoque disponível para esse produto. Se você estiver interessado em saber quando ele estará disponível novamente, posso sugerir que você entre em contato conosco para ser notificado assim que ele for restocado.",
+    "ferramentas": [
+      {
+        "ferramenta": "buscar_produtos",
+        "argumentos": {
+          "nome": "Giannini GF-3D",
+          "disponibilidade": "todas"
+        },
+        "resultado": {
+          "fonte": "CSV estático do desafio",
+          "total": 1,
+          "limitado": false,
+          "produtos": [
+            {
+              "nome": "Giannini GF-3D Dreadnought Sunburst",
+              "categoria": "Violões",
+              "preco_original_brl": "799.90",
+              "desconto_percentual": "0",
+              "preco_final_brl": "799.90",
+              "disponibilidade": "sem estoque",
+              "disponivel_para_compra": false,
+              "estoque": 0
+            }
+          ]
+        }
+      }
+    ],
+    "contexto": [
+      {
+        "prompt_tokens": 1570,
+        "output_tokens": 33,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 6488,
+        "mensagens_historico": 0
+      },
+      {
+        "prompt_tokens": 1260,
+        "output_tokens": 69,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 7096,
+        "mensagens_historico": 0
+      }
+    ],
+    "segundos": 6.02
+  },
+  {
+    "cenario": "reclamacao",
+    "cliente": "Meu teclado chegou com uma tecla sem funcionar.",
+    "resposta": "Que problema! Lamento ouvir isso. Pode me dizer quando você recebeu o teclado? Isso me ajudará a entender melhor a situação.",
+    "resposta_bruta_modelo": "Que problema! Lamento ouvir isso. Pode me dizer quando você recebeu o teclado? Isso me ajudará a entender melhor a situação.",
+    "ferramentas": [],
+    "contexto": [
+      {
+        "prompt_tokens": 1124,
+        "output_tokens": 35,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 4786,
+        "mensagens_historico": 0
+      }
+    ],
+    "segundos": 2.7
+  }
+]

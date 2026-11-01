@@ -1,11 +1,38 @@
 """Coordena histórico e execução controlada de ferramentas."""
 
 import json
+import re
 
+from emporio.catalog import _normalize
 from emporio.context import fits_context
 from emporio.ollama_client import OllamaError
 from emporio.prompts import SYSTEM_PROMPT
 from emporio.tools import TOOLS, execute_tool
+
+
+def _clarification_focus(text, has_history):
+    """Reconhece somente aberturas simples sem dados; consultas explícitas seguem o fluxo normal."""
+    if has_history:
+        return None
+    normalized = _normalize(text)
+    if re.search(r"\d|preco|custa|valor|estoque|disponiv|pedido|promoc|politica|garantia|prazo|troca|devol|horario|frete|pagamento|parcel", normalized):
+        return None
+    if not re.search(r"violao|guitarra|teclado|baixo|instrumento|bateria|ukulele|piano|sax|flauta|violino", normalized):
+        return None
+    if ("nao sei qual escolher" in normalized or "nao sei qual comprar" in normalized) and not re.search(
+        r"orcamento|reais|gastar|comecando|iniciante|ja toco|experiente", normalized
+    ):
+        return "Neste turno, pergunte apenas se está começando ou já toca e a faixa de preço. Não liste produtos ou fatos comerciais."
+    if "chegou" in normalized and re.search(r"sem funcionar|nao funciona|defeito|quebrad", normalized):
+        return "Neste turno, acolha o problema e pergunte quando recebeu. Não explique regras, não aprove troca nem prometa resolver. Não use nome não informado."
+    return None
+
+
+def _accessory_scope_question(text):
+    normalized = _normalize(text)
+    return bool(re.search(r"\b(vendem|vende|comercializam)\b", normalized)
+                and re.search(r"\b(cabos?|palhetas?|pedais|pedal|cases?|amplificadores?|acessorios?)\b", normalized)
+                and not re.search(r"preco|quanto|custa|orcamento", normalized))
 
 
 class Agent:
@@ -28,35 +55,64 @@ class Agent:
             return "Digite uma pergunta sobre os instrumentos."
         if len(text) > 2000:
             return "Sua mensagem é muito longa. Use até 2.000 caracteres."
+        if _accessory_scope_question(text):
+            # Consulta de escopo iniciada pela aplicação: o modelo local chegou
+            # a chamar catálogo ou emitir JSON de função como texto nesse caso.
+            arguments = {"pergunta": text}
+            result = execute_tool(self.catalog, "consultar_politicas", arguments, self.policies, self.orders)
+            self.last_trace.append({"ferramenta": "consultar_politicas", "argumentos": arguments,
+                                    "resultado": result, "origem": "aplicacao"})
+            scope = next((section for section in result.get("secoes", [])
+                          if section["id"] == "1" and "nao comercializamos acessorios" in _normalize(section["texto"])), None)
+            if scope is not None:
+                answer = ("A gente trabalha só com instrumentos musicais e não vende acessórios."
+                          "\n\nFontes consultadas: " + scope["referencia"] + ".")
+            else:
+                answer = "Não consegui confirmar essa informação no manual agora. Você pode tentar novamente daqui a pouco."
+            self.turns = (self.turns + [[{"role": "user", "content": text},
+                                        {"role": "assistant", "content": answer}]])[-4:]
+            return answer
         # Mantém turnos completos para não separar chamadas de seus resultados.
         history = []
         for turn in reversed(self.turns[-4:]):
             if len(json.dumps(turn, ensure_ascii=False)) + len(json.dumps(history, ensure_ascii=False)) > 10000:
                 break
             history = turn + history
-        system = [{"role": "system", "content": SYSTEM_PROMPT}]
+        focus = _clarification_focus(text, bool(self.turns))
+        if focus:
+            active_tools = []
+        else:
+            active_tools = TOOLS
+        system = [{"role": "system", "content": SYSTEM_PROMPT + ("\n" + focus if focus else "")}]
         current = [{"role": "user", "content": text}]
         count = 0
         try:
             while True:
                 # Remove turnos antigos completos, sem cortar regras, exceções ou
                 # resultados do turno atual. Se nem assim couber, não envia ao LLM.
-                while history and not fits_context(system + history + current, TOOLS):
+                while history and not fits_context(system + history + current, active_tools):
                     history.pop(0)
                     while history and history[0]["role"] != "user":
                         history.pop(0)
-                if not fits_context(system + history + current, TOOLS):
+                if not fits_context(system + history + current, active_tools):
                     return "Não há espaço para as fontes completas nesta consulta. Faça uma pergunta mais específica."
-                message = self.client.chat(system + history + current, TOOLS)
+                message = self.client.chat(system + history + current, active_tools)
                 usage = getattr(self.client, "last_usage", {})
                 if usage:
                     self.last_usage.append({**usage, "mensagens_historico": len(history)})
                 calls = message.get("tool_calls", [])
+                if calls and not active_tools:
+                    return "Para seguir, preciso entender melhor sua necessidade. Pode dar mais detalhes?"
                 if not calls:
                     answer = message.get("content", "").strip()
                     if not answer:
                         raise OllamaError("O modelo não produziu uma resposta. Tente reformular a pergunta.")
                     self.last_model_answer = answer
+                    for trace in self.last_trace:
+                        if trace["ferramenta"] == "consultar_politicas":
+                            contact = trace["resultado"].get("decisoes_confirmadas", {}).get("whatsapp")
+                            if contact:
+                                answer = re.sub(r"\(?67\)?\s*3321[-\s]?4500", lambda _: contact, answer)
                     # Não depender da redação do LLM para autorizar acesso ou
                     # concluir elegibilidade quando a própria base não tem os dados.
                     order_results = [trace["resultado"] for trace in self.last_trace
@@ -67,6 +123,9 @@ class Agent:
                                        if section["id"] == "4.1"]
                     denied = next((result for result in order_results if result.get("encontrado") is False), None)
                     owned = next((result for result in order_results if result.get("encontrado") is True), None)
+                    products = [product for trace in self.last_trace
+                                if trace["ferramenta"] == "buscar_produtos"
+                                for product in trace["resultado"].get("produtos", [])]
                     if denied is not None:
                         answer = denied["mensagem"]
                     elif owned is not None and return_sections:
@@ -79,6 +138,11 @@ class Agent:
                             "Não é possível confirmar elegibilidade com os dados disponíveis.\n\n"
                             "Para compras online, o manual informa:\n" + return_sections[0]["texto"]
                         )
+                    elif (len(products) == 1 and products[0]["disponibilidade"] == "sem estoque"
+                          and re.search(r"disponiv|estoque", _normalize(text))
+                          and not re.search(r"preco|custa|valor|quanto|promoc", _normalize(text))):
+                        answer = (f"O {products[0]['nome']} está sem estoque na base fornecida. "
+                                  "Quer que eu consulte modelos parecidos? O que você mais gostou nele?")
                     current.append({**message, "content": answer})
                     self.turns = (self.turns + [current])[-4:]
                     references = list(dict.fromkeys(

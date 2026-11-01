@@ -61,6 +61,8 @@ A integração das políticas, as ambiguidades e o novo orçamento estão na
 [ADR 0003 — Consulta às políticas](docs/adr/0003-consulta-as-politicas.md).
 A identidade simulada, autorização e proteção na consulta de pedidos estão na
 [ADR 0004 — Consulta de pedidos](docs/adr/0004-consulta-de-pedidos.md).
+O estilo, os esclarecimentos iniciais e as respostas controladas estão na
+[ADR 0005 — Estilo de atendimento](docs/adr/0005-estilo-e-esclarecimento.md).
 
 ## Arquitetura e estratégia de prompt
 
@@ -73,6 +75,17 @@ para IDs. `buscar_produtos` aceita `nome`, `categoria`, `preco_maximo` e
 `disponibilidade` (`todas` ou `disponiveis`), todos opcionais. A aplicação rejeita
 ferramentas desconhecidas, argumentos extras e tipos ou valores inválidos.
 Os preços são calculados em Python e enviados ao modelo como texto decimal.
+
+O prompt orienta linguagem acolhedora e objetiva, adaptação à experiência do cliente,
+uso do contexto e empatia nas reclamações, sem saudações ou perguntas repetitivas.
+As referências de estilo são ilustrativas, sem preços ou IDs de exemplo como fatos.
+Consultas e restrições de privacidade continuam obrigatórias; o escopo de acessórios
+é recuperado do manual, sem inventar parceiros ou insistir em uma venda.
+Em aberturas simples reconhecidas, a aplicação permite perguntar sem ferramentas;
+nas perguntas explícitas de dados, mantém as consultas. Perguntas simples de venda
+de acessórios são respondidas após consulta do manual pela aplicação. Uma consulta
+específica de falta de estoque pode receber resposta controlada, sem oferecer
+notificações inexistentes. Há limites lexicais e desvios de estilo ainda observados.
 
 São permitidas até três chamadas de ferramentas por turno. A quarta solicitação
 encerra o turno com mensagem compreensível. O histórico guarda até quatro turnos
@@ -225,6 +238,9 @@ Ressalvas do manual ficam separadas dos trechos literais: o frete de exatamente
 R$ 500 não é definido; parcelamento contém divergências; exclusões de troca não
 devem ser importadas automaticamente para arrependimento online. A aplicação não
 escolhe silenciosamente uma regra para preencher essas lacunas.
+**WhatsApp adotado: (67) 3341-4444**, conforme decisão explícita do autor em
+01/11/2026. O PDF possui contatos divergentes; a escolha é retornada separadamente
+dos trechos originais, que foram preservados. Ver [ADR 0006](docs/adr/0006-contato-whatsapp.md).
 A identificação é simulada por `--customer-id`; autenticação real permanece pendente.
 Nos pedidos, itens são relacionados pelo ID do produto somente para nome e quantidade.
 O total registrado não é reconstruído com o catálogo. Campos ausentes são informados
@@ -239,7 +255,7 @@ Execute a suíte local, sem precisar do Ollama:
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-**48 testes passaram**, cobrindo filtros, disponibilidade, promoções, cálculos,
+**56 testes passaram**, cobrindo filtros, disponibilidade, promoções, cálculos,
 dados ausentes, políticas e referências, contexto, autorização dos pedidos e
 identidade da sessão. Os testes usam os CSVs fornecidos, fontes sintéticas e
 clientes simulados; não comprovam a qualidade das respostas do modelo.
@@ -264,6 +280,7 @@ e intervenções da aplicação. Resultados, falhas e evolução dos experimento
 - [Avaliação inicial de produtos](docs/avaliacoes/README.md).
 - [Políticas e orçamento de contexto](docs/avaliacoes/politicas/README.md).
 - [Pedidos, autorização e devolução](docs/avaliacoes/pedidos/README.md).
+- [Estilo, esclarecimentos e limitações de linguagem](docs/avaliacoes/estilo/README.md).
 
 As avaliações são execuções reais em versões sucessivas, não um benchmark nem
 garantia de consistência. O experimento preliminar usava um mapeamento explícito
