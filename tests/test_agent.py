@@ -140,14 +140,37 @@ class AgentTests(unittest.TestCase):
                 self.assertNotIn("7 dias", answer)
 
     def test_instrument_exchange_is_not_blocked_by_mention_of_strings(self):
-        for question in ("Posso trocar meu violão que veio com cordas e cabos?",
-                         "Vocês vendem instrumentos de cordas?", "Vocês vendem cordas orquestrais?"):
+        agent = Agent(Catalog(), object())
+        answer = agent.reply("Posso trocar meu violão que veio com cordas e cabos?")
+        self.assertIn("apenas informativo", answer)
+        self.assertNotIn("não vende acessórios", answer)
+        for question in ("Vocês vendem instrumentos de cordas?", "Vocês vendem cordas orquestrais?"):
             with self.subTest(question=question):
                 client = FakeClient([{"role": "assistant", "content": "Vou verificar."}])
                 agent = Agent(Catalog(), client)
                 agent.reply(question)
                 self.assertEqual(len(client.requests), 1)
                 self.assertEqual(agent.last_trace, [])
+
+    def test_return_and_volunteered_receipt_do_not_start_workflow(self):
+        agent = Agent(Catalog(), object())
+        for question in ("Me arrependi da minha compra, posso devolver meu pedido?",
+                         "10/10/26 e se encontra na embalagem original"):
+            answer = agent.reply(question)
+            self.assertIn("apenas informativo", answer)
+            self.assertIn("não confirma a elegibilidade", answer)
+            self.assertNotIn("forneça", answer.lower())
+            self.assertNotIn("Você está dentro do prazo", answer)
+            self.assertEqual(agent.last_trace[0]["origem"], "aplicacao")
+            self.assertIsNone(agent.last_model_answer)
+
+    def test_return_without_policy_source_does_not_invent_rules(self):
+        class Store:
+            def search(self, question):
+                return {"suficiente": False, "secoes": []}
+        answer = Agent(Catalog(), object(), policies=Store()).reply("Posso devolver?")
+        self.assertIn("Não consegui consultar", answer)
+        self.assertNotIn("7 dias", answer)
 
     def test_out_of_stock_does_not_offer_unimplemented_notification(self):
         client = FakeClient([

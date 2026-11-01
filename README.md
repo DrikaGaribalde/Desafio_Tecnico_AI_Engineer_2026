@@ -119,9 +119,11 @@ O rastreio é pesquisado nos CSVs, sem consulta à transportadora, e não substi
 identidade da sessão. Códigos alheios e inexistentes têm a mesma resposta genérica.
 Ver [ADR 0008](docs/adr/0008-consulta-por-rastreio.md).
 
-Na consulta conjunta de pedido autorizado e política de arrependimento, a aplicação
-pede os dados ausentes e apresenta a seção recuperada, sem aprovar devolução. Os
-registros mostram separadamente a resposta bruta do modelo e a resposta protegida.
+Trocas e devoluções têm atendimento apenas informativo: a aplicação apresenta as
+seções recuperadas, sem iniciar processos, solicitar dados para abertura ou confirmar
+elegibilidade individual. Dados fornecidos espontaneamente não geram aprovação.
+A consulta de pedidos permanece somente leitura. Ver [ADR 0009](docs/adr/0009-devolucoes-informativas.md).
+Os registros distinguem respostas do modelo e proteções da aplicação.
 
 | Arquivo | Responsabilidade |
 | --- | --- |
@@ -272,7 +274,7 @@ Execute a suíte local, sem precisar do Ollama:
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-**63 testes passaram**, cobrindo filtros, disponibilidade, promoções, cálculos,
+**65 testes passaram**, cobrindo filtros, disponibilidade, promoções, cálculos,
 dados ausentes, políticas e referências, contexto, autorização dos pedidos e
 identidade da sessão. Os testes usam os CSVs fornecidos, fontes sintéticas e
 clientes simulados; não comprovam a qualidade das respostas do modelo.
@@ -339,9 +341,10 @@ respostas geradas.
   cobrem todos esses estados nem todas as falhas.
 - A identidade de clientes é simulada: quem executa a CLI pode escolher qualquer ID.
   A autorização restringe a sessão, mas não substitui autenticação real.
-- Não existe motor de elegibilidade ou estado estruturado para validar respostas sobre
-  devolução; a proteção conservadora pode repetir perguntas. Ela depende das ferramentas
-  chamadas no turno e não valida semanticamente todas as respostas possíveis.
+- Não existe motor de elegibilidade para devolução. Perguntas reconhecidas de troca ou
+  devolução recebem seções literais por controle da aplicação; o reconhecimento textual
+  é limitado e pode repetir a política. Em perguntas mistas, a proteção depende das
+  ferramentas chamadas e não valida semanticamente todas as respostas possíveis.
 - Pedidos sem data efetiva de recebimento ou canal da compra; a previsão de entrega
   não permite concluir elegibilidade para devolução.
 
