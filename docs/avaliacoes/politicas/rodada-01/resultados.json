@@ -1,0 +1,407 @@
+[
+  {
+    "cenario": "01-sabado",
+    "pergunta": "Qual é o horário de funcionamento no sábado?",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "Qual é o horário de funcionamento no sábado?"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "2",
+              "titulo": "Horário de Funcionamento",
+              "referencia": "políticas_da_loja.pdf, seção 2, página(s) 2",
+              "texto": "O atendimento presencial na loja segue os horários abaixo. O atendimento via WhatsApp segue o\nmesmo horário, com respostas automáticas fora do expediente.\nDia Horário\nSegunda a Sexta-feira 09:00 às 18:00\nSábado 09:00 às 13:00\nDomingo e Feriados Fechado\nEm datas especiais (Black Friday, Aniversário da Loja, Natal), o horário pode ser estendido.\nAlterações serão comunicadas com antecedência nas redes sociais e no atendimento via WhatsApp."
+            }
+          ],
+          "ressalvas": []
+        }
+      }
+    ],
+    "resposta": "O horário de funcionamento da loja no sábado é das 09:00 às 13:00.",
+    "contexto": [
+      {
+        "prompt_tokens": 901,
+        "output_tokens": 45,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 3847
+      },
+      {
+        "prompt_tokens": 790,
+        "output_tokens": 24,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 4859
+      }
+    ],
+    "segundos": 7.79
+  },
+  {
+    "cenario": "02-arrependimento",
+    "pergunta": "Comprei online e me arrependi. Posso devolver? Quais são as condições?",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "Posso devolver um produto comprado online e quais as condiúis para devoluçõ?"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "4.1",
+              "titulo": "Direito de Arrependimento (Compras Online)",
+              "referencia": "políticas_da_loja.pdf, seção 4.1, página(s) 4",
+              "texto": "• O cliente pode solicitar a devolução em até 7 (sete) dias corridos após o recebimento do\nproduto, sem necessidade de justificativa.\n• O produto deve estar em sua embalagem original, sem sinais de uso, com todos os\nacessórios e manuais.\n• O reembolso será realizado na mesma forma de pagamento original em até 10 dias úteis.\n• O frete de devolução é por conta da loja em caso de arrependimento."
+            },
+            {
+              "id": "4.4",
+              "titulo": "Itens Não Elegíveis para Troca",
+              "referencia": "políticas_da_loja.pdf, seção 4.4, página(s) 4",
+              "texto": "• Instrumentos com personalização ou ajustes sob encomenda (setup, regulagem especial).\n• Produtos adquiridos em promoções de liquidação com aviso explícito de \"venda final\".\n• Boquilhas de instrumentos de sopro, por questões de higiene."
+            },
+            {
+              "id": "4",
+              "titulo": "Política de Trocas e Devoluções",
+              "referencia": "políticas_da_loja.pdf, seção 4, página(s) 4",
+              "texto": "A Empório da Música segue as diretrizes do Código de Defesa do Consumidor (Lei nº 8.078/90) e\noferece condições claras para trocas e devoluções."
+            }
+          ],
+          "ressalvas": [
+            "Não concluir elegibilidade sem data efetiva de recebimento e condições do produto. A seção 4.4 fala em troca; o texto não esclarece sua aplicação ao arrependimento online. Não negar devolução automaticamente com base nela."
+          ]
+        }
+      }
+    ],
+    "resposta": "Você pode devolver o produto comprado online, desde que atenda às condições da loja. De acordo com a seção 4.1 das políticas da loja, você tem direito a devolver o produto em até 7 dias corridos após o recebimento, sem necessidade de justificativa. O produto deve estar em sua embalagem original, sem sinais de uso, com todos os acessórios e manuais.\n\nO reembolso será realizado na mesma forma de pagamento original em até 10 dias úteis. Além disso, o frete de devolução é por conta da loja em caso de arrependimento.\n\nNo entanto, é importante verificar se o produto é elegível para devolução. De acordo com a seção 4.4 das políticas da loja, alguns produtos não são elegíveis para troca, mas não há menção explícita a devoluções. Portanto, é recomendável consultar a loja para confirmar se o produto é elegível para devolução.\n\nAntes de concluir a elegibilidade, é importante perguntar sobre a data efetiva de recebimento do produto e as condições em que ele se encontra. Isso ajudará a determinar se o produto atende às condições para devolução.",
+    "contexto": [
+      {
+        "prompt_tokens": 913,
+        "output_tokens": 50,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 3873
+      },
+      {
+        "prompt_tokens": 1089,
+        "output_tokens": 283,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 5859
+      }
+    ],
+    "segundos": 9.2
+  },
+  {
+    "cenario": "03-parcelamento",
+    "pergunta": "Como funciona o parcelamento? Quais são os valores mínimos das parcelas?",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "Como funciona o parcelamento? Quais só valores mínimos das parcelas?"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "2",
+              "titulo": "Horário de Funcionamento",
+              "referencia": "políticas_da_loja.pdf, seção 2, página(s) 2",
+              "texto": "O atendimento presencial na loja segue os horários abaixo. O atendimento via WhatsApp segue o\nmesmo horário, com respostas automáticas fora do expediente.\nDia Horário\nSegunda a Sexta-feira 09:00 às 18:00\nSábado 09:00 às 13:00\nDomingo e Feriados Fechado\nEm datas especiais (Black Friday, Aniversário da Loja, Natal), o horário pode ser estendido.\nAlterações serão comunicadas com antecedência nas redes sociais e no atendimento via WhatsApp."
+            },
+            {
+              "id": "3.1",
+              "titulo": "Regras de Parcelamento",
+              "referencia": "políticas_da_loja.pdf, seção 3.1, página(s) 3",
+              "texto": "• Parcelamento em até 3x: sem juros, sem valor mínimo de parcela (exceto abaixo de R$\n50,00).\n• Parcelamento de 4x a 6x: sem juros, parcela mínima de R$ 80,00.\n• Parcelamento de 7x a 12x: sem juros, parcela mínima de R$ 100,00.\n• Combinação de formas de pagamento: permitida (ex.: PIX + cartão) para compras acima de\nR$ 2.000,00."
+            },
+            {
+              "id": "3",
+              "titulo": "Formas de Pagamento",
+              "referencia": "políticas_da_loja.pdf, seção 3, página(s) 3",
+              "texto": "Aceitamos as seguintes formas de pagamento para compras presenciais e online:\nForma Condições Observações\nPIX Pagamento à vista 5% de desconto sobre o preço de\ntabela\nCartão de Débito Pagamento à vista Todas as bandeiras aceitas\nCartão de Crédito Até 12x sem juros Parcela mínima de R$ 100,00\nBoleto Bancário Pagamento à vista Compensação em até 3 dias úteis"
+            }
+          ],
+          "ressalvas": [
+            "A tabela 3 indica parcela mínima geral de R$ 100, mas 3.1 detalha outras faixas. Há divergência; não escolher uma regra silenciosamente. A expressão 'exceto abaixo de R$ 50' é ambígua. Confirmar com a loja antes de concluir condições específicas."
+          ]
+        }
+      }
+    ],
+    "resposta": "O parcelamento é feito sem juros, com as seguintes condições:\n\n* Parcelamento em até 3x: sem valor mínimo de parcela (exceto abaixo de R$ 50,00).\n* Parcelamento de 4x a 6x: parcela mínima de R$ 80,00.\n* Parcelamento de 7x a 12x: parcela mínima de R$ 100,00.\n\nLembre-se de que a expressão \"exceto abaixo de R$ 50\" é ambígua e é recomendável confirmar com a loja antes de concluir condições específicas. Além disso, é importante notar que há uma divergência entre a tabela 3 e a seção 3.1, portanto é recomendável consultar a loja para obter informações precisas.",
+    "contexto": [
+      {
+        "prompt_tokens": 907,
+        "output_tokens": 43,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 3874
+      },
+      {
+        "prompt_tokens": 1210,
+        "output_tokens": 179,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 6199
+      }
+    ],
+    "segundos": 7.91
+  },
+  {
+    "cenario": "04-pix-promocao",
+    "pergunta": "Posso acumular uma promoção com o desconto de pagamento no PIX?",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "Posso acumular uma promoção com o desconto de pagamento no PIX?"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "6.2",
+              "titulo": "Regras de Promoções",
+              "referencia": "políticas_da_loja.pdf, seção 6.2, página(s) 6",
+              "texto": "Cumulatividade: promoções não são cumulativas. O desconto de PIX (5%) não se aplica sobre\npreços já promocionais.\nEstoque: promoções estão sujeitas à disponibilidade de estoque. Produtos esgotados durante a\npromoção não geram direito a rain check (reserva de preço).\nComunicação: preços promocionais devem sempre ser apresentados junto ao preço original e o\npercentual de desconto, para total transparência ao cliente."
+            },
+            {
+              "id": "3",
+              "titulo": "Formas de Pagamento",
+              "referencia": "políticas_da_loja.pdf, seção 3, página(s) 3",
+              "texto": "Aceitamos as seguintes formas de pagamento para compras presenciais e online:\nForma Condições Observações\nPIX Pagamento à vista 5% de desconto sobre o preço de\ntabela\nCartão de Débito Pagamento à vista Todas as bandeiras aceitas\nCartão de Crédito Até 12x sem juros Parcela mínima de R$ 100,00\nBoleto Bancário Pagamento à vista Compensação em até 3 dias úteis"
+            },
+            {
+              "id": "3.1",
+              "titulo": "Regras de Parcelamento",
+              "referencia": "políticas_da_loja.pdf, seção 3.1, página(s) 3",
+              "texto": "• Parcelamento em até 3x: sem juros, sem valor mínimo de parcela (exceto abaixo de R$\n50,00).\n• Parcelamento de 4x a 6x: sem juros, parcela mínima de R$ 80,00.\n• Parcelamento de 7x a 12x: sem juros, parcela mínima de R$ 100,00.\n• Combinação de formas de pagamento: permitida (ex.: PIX + cartão) para compras acima de\nR$ 2.000,00."
+            }
+          ],
+          "ressalvas": [
+            "A tabela 3 indica parcela mínima geral de R$ 100, mas 3.1 detalha outras faixas. Há divergência; não escolher uma regra silenciosamente. A expressão 'exceto abaixo de R$ 50' é ambígua. Confirmar com a loja antes de concluir condições específicas."
+          ]
+        }
+      }
+    ],
+    "resposta": "Sim, é possível acumular uma promoção com o desconto de pagamento no PIX. De acordo com as políticas da loja, o desconto de PIX (5%) não se aplica sobre preços já promocionais, mas isso não impede que você acumule a promoção com o desconto de pagamento no PIX. Além disso, a loja permite a combinação de formas de pagamento para compras acima de R$ 2.000,00.",
+    "contexto": [
+      {
+        "prompt_tokens": 906,
+        "output_tokens": 44,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 3865
+      },
+      {
+        "prompt_tokens": 1197,
+        "output_tokens": 103,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 6166
+      }
+    ],
+    "segundos": 6.82
+  },
+  {
+    "cenario": "05-frete-500",
+    "pergunta": "Meu pedido é de exatamente R$ 500 para Campo Grande. O frete é grátis ou pago?",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "O frete para Campo Grande é grátis ou pago?"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "5.1",
+              "titulo": "Entregas na Região Metropolitana de Campo Grande",
+              "referencia": "políticas_da_loja.pdf, seção 5.1, página(s) 4",
+              "texto": "• Frete grátis para pedidos acima de R$ 500,00.\n• Para pedidos abaixo de R$ 500,00, taxa fixa de R$ 35,00.\n• Prazo de entrega: 1 a 3 dias úteis.\n• Entrega realizada por motoboy próprio. O cliente será contactado por telefone antes da\nentrega."
+            },
+            {
+              "id": "5.2",
+              "titulo": "Entregas para Outras Cidades",
+              "referencia": "políticas_da_loja.pdf, seção 5.2, página(s) 5",
+              "texto": "Utilizamos os serviços dos Correios (PAC e SEDEX) e da transportadora Jadlog para envios fora da\nregião metropolitana de Campo Grande.\nModalidade Prazo Estimado Rastreamento Seguro\nPAC (Correios) 5 a 12 dias úteis Sim Incluído\nSEDEX (Correios) 2 a 5 dias úteis Sim Incluído\nJadlog (.package) 3 a 8 dias úteis Sim Incluído\nO valor do frete é calculado automaticamente com base no CEP de destino, peso e dimensões do\nproduto. Instrumentos de grande porte (baterias acústicas, pianos digitais, contrabaixos) podem exigir\nfrete especial com cotação individual.\nTodos os envios incluem seguro contra extravios e danos durante o transporte. Em caso de avaria, o\ncliente deve recusar o recebimento e entrar em contato imediatamente com a loja."
+            }
+          ],
+          "ressalvas": [
+            "O texto cobre acima e abaixo de R$ 500, mas não exatamente R$ 500. Nesse valor a regra é insuficiente: não afirmar frete grátis nem taxa de R$ 35. Solicitar confirmação à loja. Confirmar também região de destino.",
+            "Sem CEP, peso e dimensões e sem integração de cotação, não calcular frete de outras cidades nem prometer prazo específico."
+          ]
+        }
+      }
+    ],
+    "resposta": "\"Infelizmente, não posso determinar se o frete para Campo Grande é grátis ou pago, pois o valor do seu pedido é exatamente R$ 500,00, o que não está coberto pelas regras de frete grátis ou taxa fixa de R$ 35,00. Por favor, entre em contato com a loja para obter informações precisas sobre o frete para o seu pedido.\"",
+    "contexto": [
+      {
+        "prompt_tokens": 914,
+        "output_tokens": 31,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 3881
+      },
+      {
+        "prompt_tokens": 1157,
+        "output_tokens": 93,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 5996
+      }
+    ],
+    "segundos": 6.44
+  },
+  {
+    "cenario": "06-produto-e-politica",
+    "pergunta": "Quanto custa o Kalani KAL-700T e posso acumular a promoção dele com o desconto PIX?",
+    "ferramentas": [
+      {
+        "ferramenta": "buscar_produtos",
+        "argumentos": {
+          "nome": "Kalani KAL-700T",
+          "disponibilidade": "todas"
+        },
+        "resultado": {
+          "fonte": "CSV estático do desafio",
+          "total": 1,
+          "limitado": false,
+          "produtos": [
+            {
+              "nome": "Kalani KAL-700T Tenor Natural",
+              "categoria": "Ukuleles",
+              "preco_original_brl": "359.00",
+              "desconto_percentual": "10",
+              "preco_final_brl": "323.10",
+              "disponibilidade": "disponível",
+              "disponivel_para_compra": true,
+              "estoque": 11
+            }
+          ]
+        }
+      },
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "Quanto custa o Kalani KAL-700T e posso acumular a promoção dele com o desconto PIX?"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "6.2",
+              "titulo": "Regras de Promoções",
+              "referencia": "políticas_da_loja.pdf, seção 6.2, página(s) 6",
+              "texto": "Cumulatividade: promoções não são cumulativas. O desconto de PIX (5%) não se aplica sobre\npreços já promocionais.\nEstoque: promoções estão sujeitas à disponibilidade de estoque. Produtos esgotados durante a\npromoção não geram direito a rain check (reserva de preço).\nComunicação: preços promocionais devem sempre ser apresentados junto ao preço original e o\npercentual de desconto, para total transparência ao cliente."
+            },
+            {
+              "id": "3",
+              "titulo": "Formas de Pagamento",
+              "referencia": "políticas_da_loja.pdf, seção 3, página(s) 3",
+              "texto": "Aceitamos as seguintes formas de pagamento para compras presenciais e online:\nForma Condições Observações\nPIX Pagamento à vista 5% de desconto sobre o preço de\ntabela\nCartão de Débito Pagamento à vista Todas as bandeiras aceitas\nCartão de Crédito Até 12x sem juros Parcela mínima de R$ 100,00\nBoleto Bancário Pagamento à vista Compensação em até 3 dias úteis"
+            },
+            {
+              "id": "3.1",
+              "titulo": "Regras de Parcelamento",
+              "referencia": "políticas_da_loja.pdf, seção 3.1, página(s) 3",
+              "texto": "• Parcelamento em até 3x: sem juros, sem valor mínimo de parcela (exceto abaixo de R$\n50,00).\n• Parcelamento de 4x a 6x: sem juros, parcela mínima de R$ 80,00.\n• Parcelamento de 7x a 12x: sem juros, parcela mínima de R$ 100,00.\n• Combinação de formas de pagamento: permitida (ex.: PIX + cartão) para compras acima de\nR$ 2.000,00."
+            }
+          ],
+          "ressalvas": [
+            "A tabela 3 indica parcela mínima geral de R$ 100, mas 3.1 detalha outras faixas. Há divergência; não escolher uma regra silenciosamente. A expressão 'exceto abaixo de R$ 50' é ambígua. Confirmar com a loja antes de concluir condições específicas."
+          ]
+        }
+      }
+    ],
+    "resposta": "O Kalani KAL-700T custa R$ 359,00, mas está em promoção com 10% de desconto, então o preço final é de R$ 323,10.\n\nQuanto ao desconto PIX, não é possível acumulá-lo com a promoção do Kalani KAL-700T, pois as promoções não são cumulativas. Além disso, o desconto de PIX é de 5% sobre o preço de tabela, e não se aplica sobre preços já promocionais.\n\nSe você quiser comprar o Kalani KAL-700T, você pode pagar à vista com PIX e obter 5% de desconto sobre o preço de tabela, que é de R$ 359,00. O preço final seria de R$ 340,15.\n\nLembre-se de que as promoções estão sujeitas à disponibilidade de estoque, então é importante verificar se o produto está disponível antes de fazer a compra. Além disso, é importante ler as políticas da loja antes de fazer a compra para entender as regras e condições.",
+    "contexto": [
+      {
+        "prompt_tokens": 917,
+        "output_tokens": 88,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 3885
+      },
+      {
+        "prompt_tokens": 1369,
+        "output_tokens": 238,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 6778
+      }
+    ],
+    "segundos": 9.25
+  },
+  {
+    "cenario": "06-produto-e-politica",
+    "pergunta": "E se eu comprar esse produto online e me arrepender, posso devolver?",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "E se eu comprar esse produto online e me arrepender, posso devolver?"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "4.1",
+              "titulo": "Direito de Arrependimento (Compras Online)",
+              "referencia": "políticas_da_loja.pdf, seção 4.1, página(s) 4",
+              "texto": "• O cliente pode solicitar a devolução em até 7 (sete) dias corridos após o recebimento do\nproduto, sem necessidade de justificativa.\n• O produto deve estar em sua embalagem original, sem sinais de uso, com todos os\nacessórios e manuais.\n• O reembolso será realizado na mesma forma de pagamento original em até 10 dias úteis.\n• O frete de devolução é por conta da loja em caso de arrependimento."
+            },
+            {
+              "id": "4.4",
+              "titulo": "Itens Não Elegíveis para Troca",
+              "referencia": "políticas_da_loja.pdf, seção 4.4, página(s) 4",
+              "texto": "• Instrumentos com personalização ou ajustes sob encomenda (setup, regulagem especial).\n• Produtos adquiridos em promoções de liquidação com aviso explícito de \"venda final\".\n• Boquilhas de instrumentos de sopro, por questões de higiene."
+            }
+          ],
+          "ressalvas": [
+            "Não concluir elegibilidade sem data efetiva de recebimento e condições do produto. A seção 4.4 fala em troca; o texto não esclarece sua aplicação ao arrependimento online. Não negar devolução automaticamente com base nela."
+          ]
+        }
+      }
+    ],
+    "resposta": "Sim, você pode devolver o produto se se arrepender da compra online. De acordo com as políticas da loja, você tem direito a devolver o produto em até 7 dias corridos após o recebimento, sem necessidade de justificativa. O produto deve estar em sua embalagem original, sem sinais de uso, com todos os acessórios e manuais. O reembolso será realizado na mesma forma de pagamento original em até 10 dias úteis. Além disso, o frete de devolução é por conta da loja em caso de arrependimento.\n\nNo entanto, é importante verificar se o produto é elegível para devolução, pois existem alguns itens que não são elegíveis para troca, como instrumentos com personalização ou ajustes sob encomenda, produtos adquiridos em promoções de liquidação com aviso explícito de \"venda final\" e boquilhas de instrumentos de sopro, por questões de higiene.\n\nPara concluir a elegibilidade para devolução, é necessário verificar a data efetiva de recebimento e as condições do produto. Se você se arrepender da compra, é recomendável entrar em contato com a loja para solicitar a devolução e verificar as condições específicas do seu caso.",
+    "contexto": [
+      {
+        "prompt_tokens": 908,
+        "output_tokens": 38,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 3868
+      },
+      {
+        "prompt_tokens": 982,
+        "output_tokens": 288,
+        "limite_contexto": 8192,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 5534
+      }
+    ],
+    "segundos": 9.12
+  }
+]
