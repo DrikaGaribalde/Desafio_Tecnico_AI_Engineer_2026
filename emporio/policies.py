@@ -46,7 +46,7 @@ DEPENDENCIES = {
 
 NOTES = {
     "3.1": "A tabela 3 indica parcela mínima geral de R$ 100, mas 3.1 detalha outras faixas. Há divergência; não escolher uma regra silenciosamente. A expressão 'exceto abaixo de R$ 50' é ambígua. Confirmar com a loja antes de concluir condições específicas.",
-    "4.1": "Não concluir elegibilidade sem data efetiva de recebimento e condições do produto. Pergunte quando recebeu e se está sem uso, na embalagem original, com acessórios e manuais. Não há nesta seção exclusão por personalização ou venda final; não inventar restrições.",
+    "4.1": "Atendimento somente informativo: explicar condições, sem confirmar elegibilidade, iniciar devolução ou pedir dados para abrir processo. Previsão não é recebimento efetivo. Não há nesta seção exclusão por personalização ou venda final; não inventar restrições.",
     "4.4": "Esta seção trata de troca. Sua aplicação a arrependimento online não está esclarecida no texto; não negar devolução automaticamente com base nela.",
     "5.1": "A lacuna de exatamente R$ 500 foi resolvida pelo autor: na região metropolitana de Campo Grande, frete grátis para total maior ou igual a R$ 500; abaixo disso, R$ 35. Confirmar a região de destino; não aplicar essa regra a outras cidades.",
     "5.2": "Sem CEP, peso e dimensões e sem integração de cotação, não calcular frete de outras cidades nem prometer prazo específico.",

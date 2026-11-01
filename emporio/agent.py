@@ -23,8 +23,6 @@ def _clarification_focus(text, has_history):
         r"orcamento|reais|gastar|comecando|iniciante|ja toco|experiente", normalized
     ):
         return "Neste turno, pergunte apenas se está começando ou já toca e a faixa de preço. Não liste produtos ou fatos comerciais."
-    if "chegou" in normalized and re.search(r"sem funcionar|nao funciona|defeito|quebrad", normalized):
-        return "Neste turno, acolha o problema e pergunte quando recebeu. Não explique regras, não aprove troca nem prometa resolver. Não use nome não informado."
     return None
 
 
@@ -52,6 +50,26 @@ def _accessory_scope_question(text):
     )
 
 
+def _exchange_policy_topic(text):
+    normalized = _normalize(text)
+    if re.search(r"defeito|chegou.*(?:sem funcionar|nao funciona|quebrad)", normalized):
+        return "trocas por defeito e garantia"
+    if re.search(r"arrepend|devolv|devoluc|desisti da compra", normalized):
+        return "arrependimento em compras online"
+    if re.search(r"\b(?:troca|trocar|trocas)\b", normalized):
+        return "trocas por preferência e itens não elegíveis para troca"
+    return None
+
+
+def _informational_policy_answer(sections):
+    if not sections:
+        return "Não consegui consultar a política agora. Você pode tentar novamente ou falar com o atendimento da loja."
+    excerpts = "\n\n".join(section["titulo"] + "\n" + section["texto"] for section in sections)
+    return ("Posso te explicar as regras da loja. Este atendimento é apenas informativo: "
+            "não abre solicitações e não confirma a elegibilidade de uma compra específica.\n\n"
+            + excerpts + "\n\nPara tratar de uma troca ou devolução, fale diretamente com o atendimento da loja.")
+
+
 class Agent:
     def __init__(self, catalog, client, max_tool_calls=3, policies=None, orders=None):
         self.catalog = catalog
@@ -63,6 +81,17 @@ class Agent:
         self.policies = policies
         self.orders = orders
         self.last_model_answer = None
+        self._exchange_topic = None
+
+    def _reply_exchange_policy(self, text, topic):
+        result = execute_tool(self.catalog, "consultar_politicas", {"pergunta": topic}, self.policies, self.orders)
+        self.last_trace.append({"ferramenta": "consultar_politicas", "argumentos": {"pergunta": topic},
+                                "resultado": result, "origem": "aplicacao"})
+        answer = _informational_policy_answer(result.get("secoes", []))
+        self._exchange_topic = topic
+        self.turns = (self.turns + [[{"role": "user", "content": text},
+                                    {"role": "assistant", "content": answer}]])[-4:]
+        return answer
 
     def reply(self, text):
         self.last_trace = []
@@ -97,6 +126,22 @@ class Agent:
             self.turns = (self.turns + [[{"role": "user", "content": text},
                                         {"role": "assistant", "content": answer}]])[-4:]
             return answer
+        topic = _exchange_policy_topic(text)
+        normalized = _normalize(text)
+        order_lookup = bool(re.search(r"status|rastrei|rastreamento|consult(?:e|ar).*pedido", normalized))
+        other_lookup = bool(re.search(r"preco|custa|estoque|disponiv|horario|frete|parcel|pix|vendem|comprar|escolher", normalized))
+        if topic and not order_lookup and not other_lookup:
+            return self._reply_exchange_policy(text, topic)
+        if topic:
+            self._exchange_topic = topic
+        elif self._exchange_topic and re.search(
+            r"\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|recebi|recebido|embalagem|sem uso|manuais|presencial|online|iniciar|proceder|abrir|solicitar", normalized
+        ) and not order_lookup and not other_lookup:
+            # Dados fornecidos espontaneamente não viram uma coleta para abertura
+            # de processo ou uma aprovação calculada pelo modelo.
+            return self._reply_exchange_policy(text, self._exchange_topic)
+        elif other_lookup:
+            self._exchange_topic = None
         # Mantém turnos completos para não separar chamadas de seus resultados.
         history = []
         for turn in reversed(self.turns[-4:]):
@@ -142,10 +187,10 @@ class Agent:
                     # concluir elegibilidade quando a própria base não tem os dados.
                     order_results = [trace["resultado"] for trace in self.last_trace
                                      if trace["ferramenta"] == "consultar_pedido"]
-                    return_sections = [section for trace in self.last_trace
+                    policy_sections = [section for trace in self.last_trace
                                        if trace["ferramenta"] == "consultar_politicas"
-                                       for section in trace["resultado"].get("secoes", [])
-                                       if section["id"] == "4.1"]
+                                       for section in trace["resultado"].get("secoes", [])]
+                    exchange_sections = any(section["id"] == "4" or section["id"].startswith("4.") for section in policy_sections)
                     denied = next((result for result in order_results if result.get("encontrado") is False), None)
                     owned = next((result for result in order_results if result.get("encontrado") is True), None)
                     products = [product for trace in self.last_trace
@@ -153,16 +198,15 @@ class Agent:
                                 for product in trace["resultado"].get("produtos", [])]
                     if denied is not None:
                         answer = denied["mensagem"]
-                    elif owned is not None and return_sections:
-                        answer = (
-                            f"Para avaliar a devolução do pedido {owned['pedido_id']}, ainda preciso saber:\n"
-                            "1. A compra foi online ou presencial?\n"
-                            "2. Em que data você recebeu efetivamente o produto?\n"
-                            "3. Ele está sem uso, na embalagem original, com acessórios e manuais?\n\n"
-                            "A previsão de entrega não comprova a data de recebimento. "
-                            "Não é possível confirmar elegibilidade com os dados disponíveis.\n\n"
-                            "Para compras online, o manual informa:\n" + return_sections[0]["texto"]
-                        )
+                    elif exchange_sections:
+                        self._exchange_topic = topic or self._exchange_topic or "arrependimento em compras online"
+                        answer = _informational_policy_answer(policy_sections)
+                        if owned is not None:
+                            answer = f"Na base fornecida, o pedido {owned['pedido_id']} consta como {owned['status']}.\n\n" + answer
+                    elif owned is not None and self._exchange_topic:
+                        answer = (f"Na base fornecida, o pedido {owned['pedido_id']} consta como {owned['status']}. "
+                                  "Esta consulta não inicia uma troca ou devolução. "
+                                  "Para solicitar atendimento sobre esse caso, fale diretamente com a loja.")
                     elif (len(products) == 1 and products[0]["disponibilidade"] == "sem estoque"
                           and re.search(r"disponiv|estoque", _normalize(text))
                           and not re.search(r"preco|custa|valor|quanto|promoc", _normalize(text))):

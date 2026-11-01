@@ -1,0 +1,120 @@
+[
+  {
+    "pergunta": "me arrependi da minha compra posso devolver o meu pedido?",
+    "resposta": "Posso te explicar as regras da loja. Este atendimento é apenas informativo: não abre solicitações e não confirma a elegibilidade de uma compra específica.\n\nDireito de Arrependimento (Compras Online)\n• O cliente pode solicitar a devolução em até 7 (sete) dias corridos após o recebimento do\nproduto, sem necessidade de justificativa.\n• O produto deve estar em sua embalagem original, sem sinais de uso, com todos os\nacessórios e manuais.\n• O reembolso será realizado na mesma forma de pagamento original em até 10 dias úteis.\n• O frete de devolução é por conta da loja em caso de arrependimento.\n\nPara tratar de uma troca ou devolução, fale diretamente com o atendimento da loja.",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "arrependimento em compras online"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "4.1",
+              "titulo": "Direito de Arrependimento (Compras Online)",
+              "referencia": "políticas_da_loja.pdf, seção 4.1, página(s) 4",
+              "texto": "• O cliente pode solicitar a devolução em até 7 (sete) dias corridos após o recebimento do\nproduto, sem necessidade de justificativa.\n• O produto deve estar em sua embalagem original, sem sinais de uso, com todos os\nacessórios e manuais.\n• O reembolso será realizado na mesma forma de pagamento original em até 10 dias úteis.\n• O frete de devolução é por conta da loja em caso de arrependimento."
+            }
+          ],
+          "ressalvas": [
+            "Atendimento somente informativo: explicar condições, sem confirmar elegibilidade, iniciar devolução ou pedir dados para abrir processo. Previsão não é recebimento efetivo. Não há nesta seção exclusão por personalização ou venda final; não inventar restrições."
+          ]
+        },
+        "origem": "aplicacao"
+      }
+    ],
+    "resposta_bruta_modelo": null,
+    "contexto": [],
+    "segundos": 0.0
+  },
+  {
+    "pergunta": "10/10/26 e se encontra na embalagem original",
+    "resposta": "Posso te explicar as regras da loja. Este atendimento é apenas informativo: não abre solicitações e não confirma a elegibilidade de uma compra específica.\n\nDireito de Arrependimento (Compras Online)\n• O cliente pode solicitar a devolução em até 7 (sete) dias corridos após o recebimento do\nproduto, sem necessidade de justificativa.\n• O produto deve estar em sua embalagem original, sem sinais de uso, com todos os\nacessórios e manuais.\n• O reembolso será realizado na mesma forma de pagamento original em até 10 dias úteis.\n• O frete de devolução é por conta da loja em caso de arrependimento.\n\nPara tratar de uma troca ou devolução, fale diretamente com o atendimento da loja.",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_politicas",
+        "argumentos": {
+          "pergunta": "arrependimento em compras online"
+        },
+        "resultado": {
+          "encontrado": true,
+          "suficiente": true,
+          "fonte": "políticas_da_loja.pdf",
+          "secoes": [
+            {
+              "id": "4.1",
+              "titulo": "Direito de Arrependimento (Compras Online)",
+              "referencia": "políticas_da_loja.pdf, seção 4.1, página(s) 4",
+              "texto": "• O cliente pode solicitar a devolução em até 7 (sete) dias corridos após o recebimento do\nproduto, sem necessidade de justificativa.\n• O produto deve estar em sua embalagem original, sem sinais de uso, com todos os\nacessórios e manuais.\n• O reembolso será realizado na mesma forma de pagamento original em até 10 dias úteis.\n• O frete de devolução é por conta da loja em caso de arrependimento."
+            }
+          ],
+          "ressalvas": [
+            "Atendimento somente informativo: explicar condições, sem confirmar elegibilidade, iniciar devolução ou pedir dados para abrir processo. Previsão não é recebimento efetivo. Não há nesta seção exclusão por personalização ou venda final; não inventar restrições."
+          ]
+        },
+        "origem": "aplicacao"
+      }
+    ],
+    "resposta_bruta_modelo": null,
+    "contexto": [],
+    "segundos": 0.0
+  },
+  {
+    "pergunta": "BRAB1234567BR",
+    "resposta": "Na base fornecida, o pedido 1 consta como entregue. Esta consulta não inicia uma troca ou devolução. Para solicitar atendimento sobre esse caso, fale diretamente com a loja.",
+    "ferramentas": [
+      {
+        "ferramenta": "consultar_pedido",
+        "argumentos": {
+          "codigo_rastreio": "BRAB1234567BR"
+        },
+        "resultado": {
+          "encontrado": true,
+          "fonte": "CSVs estáticos do desafio",
+          "pedido_id": 1,
+          "itens": [
+            {
+              "produto_id": 93,
+              "nome": "Martin D-28 Dreadnought Natural",
+              "quantidade": 1
+            }
+          ],
+          "status": "entregue",
+          "total_registrado_brl": "11499.00",
+          "previsao_entrega": "2025-10-25",
+          "rastreamento": "BRAB1234567BR",
+          "informacoes_ausentes": [
+            "data efetiva de recebimento",
+            "canal da compra",
+            "condições do produto"
+          ],
+          "observacao": "Somente consulta. Previsão não comprova recebimento. Total histórico não recalculado. Valores nulos significam não informado."
+        }
+      }
+    ],
+    "resposta_bruta_modelo": "Posso te informar que o seu pedido foi entregue. O total registrado é de R$ 11.499,00. A previsão de entrega é para o dia 25/10/2025. O rastreamento é BRAB1234567BR.",
+    "contexto": [
+      {
+        "prompt_tokens": 2307,
+        "output_tokens": 27,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 9452,
+        "mensagens_historico": 4
+      },
+      {
+        "prompt_tokens": 1997,
+        "output_tokens": 58,
+        "limite_contexto": 12288,
+        "reserva_saida": 768,
+        "estimativa_conservadora_entrada": 10263,
+        "mensagens_historico": 4
+      }
+    ],
+    "segundos": 8.52
+  }
+]
