@@ -3,6 +3,10 @@
 - **Status:** aceita como arquitetura inicial; validações pendentes registradas abaixo.
 - **Data:** 31/10/2026.
 
+Este registro preserva as decisões e pendências da etapa inicial. O contrato,
+os controles e as validações implementados posteriormente estão na
+[ADR 0002 — Catálogo e execução de ferramentas](0002-catalogo-e-ferramentas.md).
+
 ## Contexto
 
 O desafio da Artefact exige um protótipo de agente de atendimento por texto para a loja fictícia Empório da Música. Python é a linguagem obrigatória; modelo, provedor, abordagem, interface e persistência são escolhas livres, justificadas no README.
