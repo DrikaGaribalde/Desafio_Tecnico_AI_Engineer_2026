@@ -75,10 +75,14 @@ class PolicyTests(unittest.TestCase):
         self.assertIn("não são cumulativas", text)
         self.assertIn("não se aplica", text)
 
-    def test_exact_500_not_decided(self):
+    def test_exact_500_has_confirmed_inclusive_regional_rule(self):
         result = self.store.search("frete para pedido de exatamente R$ 500")
-        self.assertFalse(result["suficiente"])
-        self.assertTrue(any("não exatamente" in note for note in result["ressalvas"]))
+        self.assertTrue(result["suficiente"])
+        rule = result["decisoes_confirmadas"]["frete_metropolitano"]
+        self.assertTrue(rule["limite_inclusivo"])
+        self.assertEqual(rule["limite_frete_gratis_brl"], "500.00")
+        self.assertEqual(rule["taxa_abaixo_do_limite_brl"], "35.00")
+        self.assertEqual(rule["regiao"], "Região metropolitana de Campo Grande")
         text = " ".join(s["texto"] for s in result["secoes"])
         self.assertIn("acima de R$ 500", text)
         self.assertIn("abaixo de R$ 500", text)
