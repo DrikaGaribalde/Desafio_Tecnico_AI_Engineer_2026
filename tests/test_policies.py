@@ -19,6 +19,32 @@ class PolicyTests(unittest.TestCase):
     def setUpClass(cls):
         cls.store = PolicyStore()
 
+    def test_accessories_scope_comes_from_manual(self):
+        result = self.store.search("Vocês vendem cabo para guitarra?")
+        self.assertEqual([s["id"] for s in result["secoes"]], ["1"])
+        self.assertIn("não comercializamos acessórios", result["secoes"][0]["texto"])
+
+    def test_whatsapp_uses_confirmed_decision_without_rewriting_pdf_text(self):
+        result = self.store.search("Qual é o WhatsApp da loja?")
+        self.assertEqual(result["decisoes_confirmadas"]["whatsapp"], "(67) 3341-4444")
+        self.assertEqual({s["id"] for s in result["secoes"]}, {"7", "1.2"})
+        self.assertIn("(67) 3321-4500", next(s["texto"] for s in result["secoes"] if s["id"] == "7"))
+
+    def test_whatsapp_response_does_not_repeat_superseded_contact(self):
+        class Client:
+            def __init__(self):
+                self.calls = 0
+            def chat(self, messages, tools):
+                self.calls += 1
+                if self.calls == 1:
+                    return {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                        "name": "consultar_politicas", "arguments": {"pergunta": "Qual o WhatsApp?"}}}]}
+                return {"role": "assistant", "content": "O WhatsApp é (67) 3321-4500."}
+        agent = Agent(Catalog(), Client())
+        answer = agent.reply("Qual o WhatsApp da loja?")
+        self.assertIn("(67) 3341-4444", answer)
+        self.assertNotIn("3321-4500", answer)
+
     def test_saturday_includes_holiday_and_special_date_exceptions(self):
         result = self.store.search("horário de sábado")
         self.assertEqual([s["id"] for s in result["secoes"]], ["2"])

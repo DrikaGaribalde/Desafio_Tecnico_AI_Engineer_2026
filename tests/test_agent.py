@@ -73,6 +73,64 @@ def call():
 
 
 class AgentTests(unittest.TestCase):
+    def test_opening_clarification_does_not_force_tool_call(self):
+        class Client:
+            def chat(self, messages, tools):
+                self.tools = tools
+                return {"role": "assistant", "content": "Você está começando ou já toca? Qual faixa de preço?"}
+        client = Client()
+        Agent(Catalog(), client).reply("Quero comprar um violão, mas não sei qual escolher.")
+        self.assertEqual(client.tools, [])
+
+    def test_explicit_price_keeps_tools_even_with_uncertainty(self):
+        class Client:
+            def chat(self, messages, tools):
+                self.tools = tools
+                return {"role": "assistant", "content": "Vou verificar."}
+        client = Client()
+        Agent(Catalog(), client).reply("Não sei qual escolher. Quanto custa o Takamine GD20?")
+        self.assertTrue(any(tool["function"]["name"] == "buscar_produtos" for tool in client.tools))
+
+    def test_accessory_scope_is_grounded_in_manual(self):
+        class Client:
+            def __init__(self):
+                self.calls = 0
+            def chat(self, messages, tools):
+                self.calls += 1
+                self.tools = tools
+                if self.calls == 1:
+                    return {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                        "name": "consultar_politicas", "arguments": {"pergunta": "Vocês vendem cabo?"}}}]}
+                return {"role": "assistant", "content": "Sim, vendemos."}
+        client = Client()
+        agent = Agent(Catalog(), client)
+        answer = agent.reply("Vocês vendem cabo para guitarra?")
+        self.assertEqual(client.calls, 0)
+        self.assertIn("não vende acessórios", answer)
+        self.assertIn("seção 1", answer)
+        self.assertIsNone(agent.last_model_answer)
+        self.assertEqual(agent.last_trace[0]["origem"], "aplicacao")
+
+    def test_accessory_without_source_does_not_assume_store_policy(self):
+        class Store:
+            def search(self, question):
+                return {"encontrado": False, "suficiente": False, "secoes": []}
+        agent = Agent(Catalog(), object(), policies=Store())
+        answer = agent.reply("Vocês vendem cabo para guitarra?")
+        self.assertIn("Não consegui confirmar", answer)
+        self.assertNotIn("não vende acessórios", answer)
+
+    def test_out_of_stock_does_not_offer_unimplemented_notification(self):
+        client = FakeClient([
+            {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                "name": "buscar_produtos", "arguments": {"nome": "Giannini GF-3D"}}}]},
+            {"role": "assistant", "content": "Vamos cadastrar uma notificação de reposição."}])
+        agent = Agent(Catalog(), client)
+        answer = agent.reply("O Giannini GF-3D está disponível?")
+        self.assertIn("sem estoque na base fornecida", answer)
+        self.assertNotIn("notificação", answer)
+        self.assertIn("notificação", agent.last_model_answer)
+
     def test_history_and_tool_result(self):
         client = FakeClient([call(), {"role": "assistant", "content": "R$ 2.199,00"},
                              {"role": "assistant", "content": "Continuação"}])
