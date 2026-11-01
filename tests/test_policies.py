@@ -123,7 +123,7 @@ class ContextTests(unittest.TestCase):
                 return {"role": "assistant", "content": "Olá"}
         client = Client()
         agent = Agent(Catalog(), client)
-        agent.turns = [[{"role": "user", "content": "x" * 5000},
+        agent.turns = [[{"role": "user", "content": "x" * 9000},
                         {"role": "assistant", "content": "antigo"}]]
         agent.reply("Olá")
         self.assertFalse(any(message.get("content") == "antigo" for message in client.messages))
