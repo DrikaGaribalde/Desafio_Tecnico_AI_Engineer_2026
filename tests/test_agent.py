@@ -127,6 +127,59 @@ def call():
 
 
 class AgentTests(unittest.TestCase):
+    def test_paginated_response_preserves_other_product_queries(self):
+        for extra, expected in (({"nome": "GD20"}, "Takamine GD20"),
+                                ({"nome": "inexistente"}, "Não encontrei produtos"),
+                                ({"nome": True}, "Não consegui consultar os produtos")):
+            with self.subTest(extra=extra):
+                client = FakeClient([
+                    {"role": "assistant", "content": "", "tool_calls": [
+                        {"function": {"name": "buscar_produtos", "arguments": {}}},
+                        {"function": {"name": "buscar_produtos", "arguments": extra}},
+                    ]},
+                    {"role": "assistant", "content": "Resposta incompleta"},
+                ])
+                agent = Agent(Catalog(), client)
+                answer = agent.reply("Liste produtos e consulte outro modelo")
+                self.assertIn("página 1", answer)
+                self.assertIn(expected, answer)
+                self.assertEqual(agent._last_presented_product_page[0], {})
+                self.assertEqual(agent.turns[-1][-1]["content"], answer)
+
+    def test_failed_turn_does_not_replace_presented_page(self):
+        search = {"role": "assistant", "content": "", "tool_calls": [{"function": {
+            "name": "buscar_produtos", "arguments": {}}}]}
+        for failure in ("http", "context", "limit"):
+            with self.subTest(failure=failure):
+                responses = [search, OllamaError("Falha simulada")] if failure == "http" else [search, search]
+                agent = Agent(Catalog(), FakeClient(responses), max_tool_calls=1)
+                # Uma página já apresentada deve sobreviver a uma nova tentativa falha.
+                previous_args = {"categoria": "Violões", "nome": "nylon", "disponibilidade": "disponiveis"}
+                previous = execute_tool(agent.catalog, "buscar_produtos", previous_args)
+                agent._last_presented_product_page = (previous_args, previous)
+                if failure == "context":
+                    with patch("emporio.agent.fits_context", side_effect=[True, False]):
+                        answer = agent.reply("Liste outros produtos")
+                    self.assertIn("Não há espaço", answer)
+                else:
+                    answer = agent.reply("Liste outros produtos")
+                    self.assertIn("Falha" if failure == "http" else "limite", answer)
+                self.assertEqual(agent.turns, [])
+                self.assertEqual(agent._last_presented_product_page, (previous_args, previous))
+                self.assertIn("página 2", agent.reply("continuar"))
+                self.assertEqual(agent.last_trace[0]["argumentos"], {**previous_args, "pagina": 2})
+
+    def test_first_failed_search_cannot_skip_to_second_page(self):
+        client = FakeClient([
+            {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                "name": "buscar_produtos", "arguments": {}}}]},
+            OllamaError("Falha simulada"),
+        ])
+        agent = Agent(Catalog(), client)
+        self.assertIn("Falha", agent.reply("Liste produtos"))
+        self.assertIsNone(agent._last_presented_product_page)
+        self.assertIn("Informe os filtros", agent.reply("continuar"))
+
     def test_next_page_preserves_filters_and_stops_at_end(self):
         arguments = {"nome": "nylon", "categoria": "Violões", "disponibilidade": "disponiveis"}
         client = FakeClient([

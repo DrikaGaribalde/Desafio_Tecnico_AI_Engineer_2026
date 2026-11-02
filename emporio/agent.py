@@ -73,13 +73,21 @@ def _informational_policy_answer(sections):
             + excerpts + "\n\nPara tratar de uma troca ou devolução, fale diretamente com o atendimento da loja.")
 
 
+def _product_summary(product: dict) -> str:
+    return (f"{product['nome']}: original R$ {product['preco_original_brl']}; "
+            f"desconto {product['desconto_percentual']}%; final R$ {product['preco_final_brl']}; "
+            f"PIX R$ {product['preco_pix_brl']}; {product['disponibilidade']}.")
+
+
 def _product_page_answer(result: dict) -> str:
+    if "erro" in result:
+        return "Não consegui consultar os produtos: " + result["erro"]
+    if not result["produtos"]:
+        return "Não encontrei produtos para esses filtros na base fornecida."
     lines = [f"Na base fornecida: página {result['pagina']} de {result['total_paginas']}, "
              f"{result['total']} produtos encontrados."]
     for product in result["produtos"]:
-        lines.append(f"- {product['nome']}: original R$ {product['preco_original_brl']}; "
-                     f"desconto {product['desconto_percentual']}%; final R$ {product['preco_final_brl']}; "
-                     f"PIX R$ {product['preco_pix_brl']}; {product['disponibilidade']}.")
+        lines.append("- " + _product_summary(product))
     lines.append("Digite 'continuar' para ver mais opções ou faça outra pergunta." if result["proxima_pagina"] is not None
                  else "Esta é a última página.")
     return "\n".join(lines)
@@ -108,11 +116,29 @@ class Agent:
         self.orders = orders
         self.last_model_answer = None
         self._exchange_topic = None
-        self._last_product_page = None
+        self._last_presented_product_page: tuple[dict, dict] | None = None
 
     def _save_turn(self, messages: list[dict]) -> None:
         """Guarda somente turnos completos, preservando chamadas e resultados."""
         self.turns = (self.turns + [messages])[-MAX_HISTORY_TURNS:]
+
+    def _reply_next_page(self, text: str) -> str:
+        """Avança somente a partir de uma consulta apresentada com sucesso."""
+        if self._last_presented_product_page is None:
+            return "Qual busca de produtos você quer fazer? Informe os filtros para começar."
+        arguments, previous = self._last_presented_product_page
+        if previous["proxima_pagina"] is None:
+            return "Essa busca não tem próxima página. Você pode informar novos filtros."
+        arguments = {**arguments, "pagina": previous["proxima_pagina"]}
+        result = execute_tool(self.catalog, "buscar_produtos", arguments, self.policies, self.orders)
+        self.last_trace.append({"ferramenta": "buscar_produtos", "argumentos": arguments,
+                                "resultado": result, "origem": "aplicacao"})
+        if "erro" in result:
+            return result["erro"]
+        answer = _product_page_answer(result)
+        self._save_turn([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
+        self._last_presented_product_page = (arguments, result)
+        return answer
 
     def _apply_response_guards(self, answer: str, text: str, topic: str | None) -> str:
         """Aplica proteções antes de apresentar e guardar a resposta final."""
@@ -142,12 +168,7 @@ class Agent:
             self._exchange_topic = topic or self._exchange_topic or "arrependimento em compras online"
             answer = _informational_policy_answer(policy_sections)
             if products:
-                summaries = [
-                    f"{p['nome']}: preço original R$ {p['preco_original_brl']}; "
-                    f"desconto {p['desconto_percentual']}%; preço final R$ {p['preco_final_brl']}; "
-                    f"PIX R$ {p['preco_pix_brl']}; {p['disponibilidade']}."
-                    for p in products
-                ]
+                summaries = [_product_summary(p) for p in products]
                 answer = "Na base fornecida:\n" + "\n".join(summaries) + "\n\n" + answer
                 for trace in self.last_trace:
                     result = trace["resultado"]
@@ -170,7 +191,7 @@ class Agent:
                  t["ferramenta"] == "buscar_produtos" and t["resultado"].get("limitado")
                  for t in self.last_trace):
             answer = "\n\n".join(_product_page_answer(t["resultado"]) for t in self.last_trace
-                                    if t["ferramenta"] == "buscar_produtos" and t["resultado"].get("limitado"))
+                                    if t["ferramenta"] == "buscar_produtos")
         return answer
 
     def _reply_exchange_policy(self, text, topic):
@@ -192,21 +213,7 @@ class Agent:
         if len(text) > 2000:
             return "Sua mensagem é muito longa. Use até 2.000 caracteres."
         if re.fullmatch(r"(?:continuar|(?:mostre (?:a )?|quero (?:a )?)?proxima pagina)[.!?]?", _normalize(text).strip()):
-            if self._last_product_page is None:
-                return "Qual busca de produtos você quer fazer? Informe os filtros para começar."
-            arguments, previous = self._last_product_page
-            if previous["proxima_pagina"] is None:
-                return "Essa busca não tem próxima página. Você pode informar novos filtros."
-            arguments = {**arguments, "pagina": previous["proxima_pagina"]}
-            result = execute_tool(self.catalog, "buscar_produtos", arguments, self.policies, self.orders)
-            self.last_trace.append({"ferramenta": "buscar_produtos", "argumentos": arguments,
-                                    "resultado": result, "origem": "aplicacao"})
-            if "erro" in result:
-                return result["erro"]
-            self._last_product_page = (arguments, result)
-            answer = _product_page_answer(result)
-            self._save_turn([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
-            return answer
+            return self._reply_next_page(text)
         if _accessory_scope_question(text):
             # Consulta de escopo iniciada pela aplicação: o modelo local chegou
             # a chamar catálogo ou emitir JSON de função como texto nesse caso.
@@ -285,6 +292,15 @@ class Agent:
                     answer = self._apply_response_guards(answer, text, topic)
                     current.append({**message, "content": answer})
                     self._save_turn(current)
+                    # Só confirma navegação depois de concluir o turno. Em buscas
+                    # conjuntas, continuar se refere à última lista paginada.
+                    presented = [t for t in self.last_trace if t["ferramenta"] == "buscar_produtos"
+                                 and "erro" not in t["resultado"]]
+                    denied = any(t["ferramenta"] == "consultar_pedido" and
+                                 t["resultado"].get("encontrado") is False for t in self.last_trace)
+                    if presented and not denied:
+                        page = next((t for t in reversed(presented) if t["resultado"].get("limitado")), presented[-1])
+                        self._last_presented_product_page = (dict(page["argumentos"]), page["resultado"])
                     return answer
                 if count + len(calls) > self.max_tool_calls:
                     return "Não consegui concluir a consulta dentro do limite de ferramentas. Tente uma pergunta mais específica."
@@ -294,8 +310,6 @@ class Agent:
                     name = function.get("name", "") if isinstance(function, dict) else ""
                     arguments = function.get("arguments", {}) if isinstance(function, dict) else {}
                     result = execute_tool(self.catalog, name, arguments, self.policies, self.orders)
-                    if name == "buscar_produtos" and "erro" not in result:
-                        self._last_product_page = (dict(arguments), result)
                     self.last_trace.append({"ferramenta": name, "argumentos": arguments, "resultado": result})
                     current.append({"role": "tool", "tool_name": name,
                                     "content": json.dumps(result, ensure_ascii=False, separators=(",", ":"))})

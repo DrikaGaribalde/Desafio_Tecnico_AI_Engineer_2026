@@ -4,33 +4,72 @@ Protótipo em Python para o Desafio Técnico AI Engineer da Artefact.
 Atende pelo terminal, em português, consultando produtos, promoções, políticas e pedidos.
 Os dados são estáticos e a identificação do cliente é simulada, sem autenticação real.
 
-## Como executar
+## Configuração e execução
 
 Ambiente testado: **Python 3.12.9**, **Ollama 0.40.13** e **`llama3.1:latest`**
 (8B, Q4_K_M, identificador `46e0c10c039e`). A tag pode mudar entre instalações.
-O modelo deve estar disponível no Ollama; não há download automático.
+Instale Python 3.12 e Ollama antes de seguir os comandos. O projeto não baixa
+o modelo automaticamente.
 
-No PowerShell, na raiz do projeto:
+No PowerShell, na raiz do projeto, confira o serviço e os modelos instalados:
 
 ```powershell
 ollama list
 Invoke-RestMethod -Uri 'http://localhost:11434/api/version'
+```
+
+Se o serviço estiver parado, abra o Ollama ou execute `ollama serve` em outro terminal.
+Se `llama3.1:latest` não aparecer na lista, baixe o modelo:
+
+```powershell
+ollama pull llama3.1:latest
+```
+
+Crie o ambiente virtual e inicie o atendimento:
+
+```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m emporio --customer-id 3
 ```
 
-Se o serviço estiver parado, abra o Ollama ou execute `ollama serve` em outro terminal.
 Aplicação e testes usam somente a biblioteca padrão; `requirements.txt` contém apenas
 comentários, sem pacotes a instalar. Não há credenciais ou variáveis de ambiente obrigatórias.
 
-A CLI apresenta boas-vindas, sugestões de perguntas e a identificação simulada da sessão.
-Para encerrar, use `sair`, `/sair`, `exit` ou Ctrl+C. O histórico dura somente a sessão.
 No VS Code, selecione `.venv\Scripts\python.exe` como interpretador.
 Para acentuação em redirecionamentos, use `-X utf8` antes de `-m`.
+
+## Como usar
+
+Digite uma pergunta no terminal, por exemplo:
+
+- “Fale sobre a Empório da Música.”
+- “Quais violões de nylon estão disponíveis?”
+- “Quanto custa o Takamine GD20 no PIX?”
+- “Como funciona o parcelamento?”
+- “Qual o status do pedido 1?”
+
+As listas mostram até cinco produtos por página, ordenados por preço.
+Digite **`continuar`** ou **`próxima página`** para ver mais opções com os mesmos
+filtros, ou faça outra pergunta para seguir o atendimento. Após a última página,
+o agente informa que não há outra. Em buscas conjuntas, a continuação segue a
+última lista paginada apresentada.
+
+Para encerrar a sessão, use `sair`, `/sair`, `exit` ou Ctrl+C.
+O histórico e os filtros de paginação existem somente durante a sessão.
+
+### Consulta de pedidos
 
 O cliente padrão **3** pode consultar o pedido **1** ou o rastreio `BRAB1234567BR`;
 o pedido **2** fica bloqueado. Para demonstrar o pedido **9**, sem previsão ou rastreamento,
 execute com `--customer-id 6`. A identidade não pode ser alterada pelo chat.
+
+```powershell
+.\.venv\Scripts\python.exe -m emporio --customer-id 6
+```
+
+Informe o número do pedido **ou** o código de rastreio, um por consulta.
+A aplicação verifica se o pedido pertence ao cliente da sessão. Essa identificação
+é uma simulação: quem inicia o programa pode escolher outro ID; não há login real.
 
 ## Arquitetura e decisões
 
@@ -46,7 +85,12 @@ para conter falhas observadas, como aprovações indevidas de devolução.
 | Busca textual por seções do PDF | Recupera regras completas sem embeddings ou banco vetorial |
 | Histórico em memória | Continuidade sem persistência adicional |
 
-As ferramentas são `buscar_produtos`, `consultar_politicas` e `consultar_pedido`.
+| Ferramenta | O que consulta |
+| --- | --- |
+| `buscar_produtos` | Modelos, preços, promoções e disponibilidade nos CSVs |
+| `consultar_politicas` | Apresentação da loja, categorias comercializadas e regras do manual |
+| `consultar_pedido` | Dados do pedido autorizado para o cliente da sessão |
+
 O prompt não contém mapeamentos fixos de nomes de produtos para IDs.
 Há limite de três chamadas por turno e contexto de **12.288 tokens**, com remoção de
 turnos antigos quando necessário. O PDF inteiro não é enviado ao modelo.
@@ -68,29 +112,15 @@ Justificativas e alternativas estão nas [ADRs](docs/adr/), especialmente
 [pedidos](docs/adr/0004-consulta-de-pedidos.md) e
 [devoluções informativas](docs/adr/0009-devolucoes-informativas.md).
 
-## Dados e estrutura
-
-`data/` contém os CSVs de categorias, produtos, promoções, pedidos e itens, além de
-`políticas_da_loja.pdf` e `politicas_secoes.json`. `customers.csv` é fornecido, mas não
-é carregado. Os CSVs originais não são modificados.
-
-- `emporio/`: CLI, agente, prompt, cliente Ollama e ferramentas.
-- `tests/`: testes locais, sem depender do modelo.
-- `scripts/`: extração do PDF e avaliações com o modelo.
-- `docs/`: ADRs, conversas e resultados de avaliação.
-
-O JSON de políticas já está preparado e vinculado ao PDF por SHA-256.
-Se alterar o manual, regenere com `.\.venv\Scripts\python.exe -m scripts.extract_policies`
-e revise a extração. Somente essa preparação exige `pdftotext` (Poppler) no PATH.
-
 ## Testes e conversas reais
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Há registro de **65 testes aprovados**, cobrindo filtros, cálculos, disponibilidade,
-políticas, contexto e autorização. Testes com clientes simulados não comprovam a
+Na última validação local desta revisão, **82 testes passaram**, cobrindo filtros,
+cálculos, disponibilidade, políticas, contexto, autorização, paginação e falhas.
+Testes com clientes simulados não comprovam a
 qualidade do modelo. Execuções reais e falhas estão nas avaliações de
 [produtos](docs/avaliacoes/README.md), [políticas](docs/avaliacoes/politicas/README.md),
 [pedidos](docs/avaliacoes/pedidos/README.md) e [estilo](docs/avaliacoes/estilo/README.md).
@@ -112,25 +142,36 @@ Para repetir a avaliação de catálogo com Ollama, preservando esses exemplos:
 Use uma pasta nova: esse script sobrescreve arquivos de mesmo nome no destino.
 Os registros históricos refletem versões sucessivas e não garantem consistência atual.
 
-## Limitações
+## Dados e estrutura
+
+`data/` contém os CSVs de categorias, produtos, promoções, pedidos e itens, além de
+`políticas_da_loja.pdf` e `politicas_secoes.json`. `customers.csv` é fornecido, mas não
+é carregado. Os CSVs originais não são modificados.
+
+- `emporio/`: CLI, agente, prompt, cliente Ollama e ferramentas.
+- `tests/`: testes locais, sem depender do modelo.
+- `scripts/`: extração do PDF e avaliações com o modelo.
+- `docs/`: ADRs, conversas e resultados de avaliação.
+
+O JSON de políticas já está preparado e vinculado ao PDF por SHA-256.
+Se alterar o manual, regenere com `.\.venv\Scripts\python.exe -m scripts.extract_policies`
+e revise a extração. Somente essa preparação exige `pdftotext` (Poppler) no PATH.
+
+## Limitações e melhorias futuras
 
 - Dados estáticos, sem integração comercial ou com transportadoras; autenticação simulada.
 - O modelo pode omitir condições, deixar de consultar ferramentas ou contradizer resultados.
   Os controles não validam semanticamente todas as respostas.
-- Busca textual limitada para sinônimos e perguntas mistas. O catálogo retorna cinco
-  produtos por página, ordenados por preço; digite “continuar” ou “próxima página”
-  para ver mais opções, ou faça outra pergunta para seguir o atendimento. `sair`
-  encerra toda a sessão.
-  A ferramenta repete os filtros com `pagina` e informa total, total de páginas e
-  próxima página. A aplicação guarda os filtros da última consulta bem-sucedida na
-  sessão; “continuar” e “próxima página” os reutilizam sem chamar o modelo. Sem busca anterior,
-  pede filtros; após a última página, informa que não há outra. Listas paginadas
-  de catálogo são apresentadas pela aplicação para não omitir itens ou inventar páginas.
-  Inconsistências dos dados afetam a busca; paginação reduz o contexto, mas não garante
-  que toda consulta composta caiba no orçamento.
-- Orçamento de contexto estimado; conversas longas perdem turnos antigos.
+- Busca textual limitada para sinônimos e perguntas mistas; inconsistências dos dados
+  podem afetar os resultados.
+- O orçamento de contexto é estimado de forma conservadora. Conversas podem perder
+  turnos antigos ou receber um pedido de pergunta mais específica, mesmo com paginação.
 - Devoluções usam reconhecimento textual e podem repetir regras. Não há motor de elegibilidade.
 - Desempenho depende do hardware local. Os testes não cobrem todas as situações.
+
+Com mais tempo, as prioridades seriam ampliar as avaliações reais do modelo,
+melhorar a estimativa de contexto e a recuperação textual, e implementar autenticação
+antes de usar dados reais de clientes.
 
 ## Uso de IA
 
