@@ -54,6 +54,10 @@ filtros, ou faça outra pergunta para seguir o atendimento. Após a última pág
 o agente informa que não há outra. Em buscas conjuntas, a continuação segue a
 última lista paginada apresentada.
 
+Após apresentar um único produto, “E no PIX?” consulta novamente seu preço.
+Se a referência não estiver clara, o agente pede o nome ou modelo. O valor vem
+da ferramenta, sem acumular desconto PIX com promoção.
+
 Para encerrar a sessão, use `sair`, `/sair`, `exit` ou Ctrl+C.
 O histórico e os filtros de paginação existem somente durante a sessão.
 
@@ -128,7 +132,7 @@ Justificativas e alternativas estão nas [ADRs](docs/adr/), especialmente
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Na última validação local desta revisão, **95 testes passaram**, cobrindo filtros,
+Na última validação local desta revisão, **100 testes passaram**, cobrindo filtros,
 cálculos, disponibilidade, políticas, contexto, autorização, paginação e falhas.
 Testes com clientes simulados não comprovam a
 qualidade do modelo. Execuções reais e falhas estão nas avaliações de
@@ -147,11 +151,11 @@ Cada arquivo separa classificação de escopo, resposta bruta do modelo, respost
 apresentada e intervenções da aplicação. Inclui as ferramentas, resultados e métricas,
 sem editar as falas para ocultar falhas. O código e o modelo utilizados estão
 identificados nos [metadados](docs/conversas/versao-final-2026-11-02/metadados.json).
-Nesta rodada, a continuidade “E no PIX?” respondeu somente a regra geral, e a
-resposta de promoção omitiu preço original e percentual. Os registros preservam
-essas limitações; não representam aprovação integral das respostas.
-“Sem substituição” indica igualdade entre os textos bruto e apresentado, sem
-afirmar ausência de verificações ou proteções da aplicação.
+Esses registros antecedem as correções de continuidade no PIX e de instruções de
+compra na CLI; foram preservados como evidência da versão executada. Incluem falhas,
+como a omissão do preço original e do percentual de promoção, e não representam
+aprovação integral das respostas.
+
 Os [cinco exemplos anteriores de catálogo](docs/avaliacoes/catalogo-historico/) foram
 arquivados nas avaliações, com as falas originais preservadas.
 
