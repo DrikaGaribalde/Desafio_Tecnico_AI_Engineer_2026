@@ -18,12 +18,14 @@ class OllamaClient:
         self.timeout = timeout
         self.last_usage = {}
 
-    def chat(self, messages, tools):
+    def chat(self, messages, tools, response_format=None):
         self.last_usage = {}
         if not fits_context(messages, tools):
             raise OllamaError("A consulta excede o orçamento de contexto. Faça uma pergunta mais específica ou inicie uma nova sessão.")
         payload = {"model": self.model, "messages": messages, "tools": tools,
                    "stream": False, "options": {"temperature": 0, "num_ctx": CONTEXT_TOKENS, "num_predict": OUTPUT_TOKENS}}
+        if response_format is not None:
+            payload["format"] = response_format
         request = Request(self.base_url + "/api/chat", data=json.dumps(payload).encode("utf-8"),
                           headers={"Content-Type": "application/json"})
         try:

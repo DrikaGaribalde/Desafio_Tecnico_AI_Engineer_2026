@@ -22,6 +22,7 @@ def main():
         start = perf_counter()
         answer = agent.reply(question)
         records.append({"pergunta": question, "resposta": answer,
+                        "classificacao_escopo": agent.last_scope,
                         "ferramentas": agent.last_trace,
                         "resposta_bruta_modelo": agent.last_model_answer,
                         "contexto": agent.last_usage,

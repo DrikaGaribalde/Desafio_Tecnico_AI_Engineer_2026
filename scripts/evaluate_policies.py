@@ -43,6 +43,7 @@ def main():
             answer = agent.reply(question)
             elapsed = round(perf_counter() - start, 2)
             record = {"cenario": name, "pergunta": question, "ferramentas": agent.last_trace,
+                      "classificacao_escopo": agent.last_scope,
                       "resposta": answer, "resposta_bruta_modelo": agent.last_model_answer,
                       "contexto": agent.last_usage, "segundos": elapsed}
             records.append(record)

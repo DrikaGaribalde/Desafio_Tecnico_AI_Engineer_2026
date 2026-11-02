@@ -37,10 +37,14 @@ def main():
             answer = agent.reply(question)
             elapsed = perf_counter() - start
             lines += [f"**Cliente:** {question}", "", "Ferramentas e resultados:", "", "```json",
-                      json.dumps({"ferramentas": agent.last_trace, "contexto": agent.last_usage},
+                      json.dumps({"classificacao_escopo": agent.last_scope,
+                                  "resposta_bruta_modelo": agent.last_model_answer,
+                                  "ferramentas": agent.last_trace, "contexto": agent.last_usage},
                                  ensure_ascii=False, indent=2), "```", "",
                       f"**Agente:** {answer}", "", f"Tempo do turno: {elapsed:.1f} s.", ""]
             print(json.dumps({"cenario": name, "pergunta": question, "trace": agent.last_trace,
+                              "classificacao_escopo": agent.last_scope,
+                              "resposta_bruta_modelo": agent.last_model_answer,
                               "resposta": answer, "contexto": agent.last_usage,
                               "segundos": round(elapsed, 1)}, ensure_ascii=True), flush=True)
         (output / f"{name}.md").write_text("\n".join(lines), encoding="utf-8")

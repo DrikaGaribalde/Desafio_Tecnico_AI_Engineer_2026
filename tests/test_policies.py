@@ -15,6 +15,11 @@ from emporio.tools import TOOLS, execute_tool
 
 
 class PolicyTests(unittest.TestCase):
+    def setUp(self):
+        scope = patch("emporio.agent.classify_scope", return_value={"escopo": "loja"})
+        scope.start()
+        self.addCleanup(scope.stop)
+
     @classmethod
     def setUpClass(cls):
         cls.store = PolicyStore()
@@ -168,6 +173,11 @@ class PolicyTests(unittest.TestCase):
 
 
 class ContextTests(unittest.TestCase):
+    def setUp(self):
+        scope = patch("emporio.agent.classify_scope", return_value={"escopo": "loja"})
+        scope.start()
+        self.addCleanup(scope.stop)
+
     def test_client_refuses_oversized_request_before_http(self):
         messages = [{"role": "user", "content": "x" * CONTEXT_TOKENS}]
         self.assertFalse(fits_context(messages, TOOLS))

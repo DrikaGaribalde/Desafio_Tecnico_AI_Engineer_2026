@@ -42,6 +42,7 @@ def main():
             start = perf_counter()
             answer = agent.reply(question)
             record = {"cenario": name, "customer_id_aplicacao": customer_id, "pergunta": question,
+                      "classificacao_escopo": agent.last_scope,
                       "ferramentas": agent.last_trace, "resposta": answer,
                       "resposta_bruta_modelo": agent.last_model_answer, "contexto": agent.last_usage,
                       "segundos": round(perf_counter() - start, 2)}

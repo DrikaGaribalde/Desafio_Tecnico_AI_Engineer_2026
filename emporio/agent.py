@@ -7,10 +7,15 @@ from emporio.catalog import _normalize
 from emporio.context import fits_context
 from emporio.ollama_client import OllamaError
 from emporio.prompts import SYSTEM_PROMPT
+from emporio.scope import classify_scope
 from emporio.tools import TOOLS, execute_tool
 
 
 MAX_HISTORY_TURNS = 4
+OUT_OF_SCOPE_ANSWER = (
+    "Esse assunto fica fora do atendimento da Empório da Música. "
+    "Posso ajudar com instrumentos musicais, produtos, pedidos e políticas da loja."
+)
 
 
 def _clarification_focus(text, has_history):
@@ -105,9 +110,11 @@ def _order_summary(order: dict) -> str:
 
 
 class Agent:
-    def __init__(self, catalog, client, max_tool_calls=3, policies=None, orders=None):
+    def __init__(self, catalog, client, max_tool_calls=3, policies=None, orders=None, scope_classifier=None):
         self.catalog = catalog
         self.client = client
+        self.scope_classifier = scope_classifier
+        self.last_scope = None
         self.max_tool_calls = max_tool_calls
         self.turns = []
         self.last_trace = []
@@ -208,10 +215,23 @@ class Agent:
         self.last_trace = []
         self.last_usage = []
         self.last_model_answer = None
+        self.last_scope = None
         if not text.strip():
             return "Digite uma pergunta sobre os instrumentos."
         if len(text) > 2000:
             return "Sua mensagem é muito longa. Use até 2.000 caracteres."
+        try:
+            classifier = self.scope_classifier or classify_scope
+            self.last_scope = classifier(self.client, text, self.turns)
+            if self.last_scope.get("uso"):
+                self.last_usage.append({**self.last_scope["uso"], "fase": "escopo"})
+        except OllamaError as exc:
+            self.last_scope = {"erro": str(exc)}
+            return str(exc)
+        if self.last_scope["escopo"] == "fora":
+            self._save_turn([{"role": "user", "content": text},
+                             {"role": "assistant", "content": OUT_OF_SCOPE_ANSWER}])
+            return OUT_OF_SCOPE_ANSWER
         if re.fullmatch(r"(?:continuar|(?:mostre (?:a )?|quero (?:a )?)?proxima pagina)[.!?]?", _normalize(text).strip()):
             return self._reply_next_page(text)
         if _accessory_scope_question(text):

@@ -77,6 +77,13 @@ O modelo solicita ferramentas; a aplicação valida os argumentos, consulta os a
 e devolve resultados estruturados. Algumas respostas são controladas pela aplicação
 para conter falhas observadas, como aprovações indevidas de devolução.
 
+Antes do atendimento, o modelo identifica se a mensagem é da loja, fora do escopo
+ou ambígua, considerando o histórico recente. A aplicação redireciona assuntos
+alheios; os demais seguem para consulta ou esclarecimento. Essa etapa acrescenta
+uma chamada ao Ollama por mensagem. Se a classificação falhar, o agente informa
+o erro e não executa consultas. Os detalhes estão na
+[avaliação de escopo](docs/avaliacoes/escopo/classificacao-intencao-2026-11-02.md).
+
 | Escolha | Motivo |
 | --- | --- |
 | Python e CLI, sem framework de agentes | Solução simples e explicável no prazo de dois dias |
@@ -92,7 +99,7 @@ para conter falhas observadas, como aprovações indevidas de devolução.
 | `consultar_pedido` | Dados do pedido autorizado para o cliente da sessão |
 
 O prompt não contém mapeamentos fixos de nomes de produtos para IDs.
-Há limite de três chamadas por turno e contexto de **12.288 tokens**, com remoção de
+Há limite de três chamadas de ferramentas por turno e contexto de **12.288 tokens**, com remoção de
 turnos antigos quando necessário. O PDF inteiro não é enviado ao modelo.
 
 - Disponibilidade distingue estoque, descontinuados e lançamentos futuros.
@@ -118,7 +125,7 @@ Justificativas e alternativas estão nas [ADRs](docs/adr/), especialmente
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Na última validação local desta revisão, **82 testes passaram**, cobrindo filtros,
+Na última validação local desta revisão, **91 testes passaram**, cobrindo filtros,
 cálculos, disponibilidade, políticas, contexto, autorização, paginação e falhas.
 Testes com clientes simulados não comprovam a
 qualidade do modelo. Execuções reais e falhas estão nas avaliações de
@@ -162,6 +169,8 @@ e revise a extração. Somente essa preparação exige `pdftotext` (Poppler) no 
 - Dados estáticos, sem integração comercial ou com transportadoras; autenticação simulada.
 - O modelo pode omitir condições, deixar de consultar ferramentas ou contradizer resultados.
   Os controles não validam semanticamente todas as respostas.
+- A classificação de escopo pode errar ou perder referências do histórico. Em perguntas
+  mistas, o atendimento é orientado a responder somente à parte da loja.
 - Busca textual limitada para sinônimos e perguntas mistas; inconsistências dos dados
   podem afetar os resultados.
 - O orçamento de contexto é estimado de forma conservadora. Conversas podem perder

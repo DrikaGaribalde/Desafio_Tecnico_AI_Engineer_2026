@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from urllib.error import URLError
 
-from emporio.agent import Agent
+from emporio.agent import Agent, OUT_OF_SCOPE_ANSWER
 from emporio.catalog import Catalog
 from emporio.context import fits_context
 from emporio.ollama_client import OllamaClient, OllamaError
@@ -127,6 +127,40 @@ def call():
 
 
 class AgentTests(unittest.TestCase):
+    def setUp(self):
+        # Estes testes isolam o atendimento. A classificação é exercitada em test_scope.
+        scope = patch("emporio.agent.classify_scope", return_value={"escopo": "loja"})
+        scope.start()
+        self.addCleanup(scope.stop)
+
+    def test_explicit_out_of_scope_requests_redirect_without_tools(self):
+        for question in ("Me ensine uma receita de bolo de cenoura.",
+                         "Quais ingredientes para preparar uma pizza?",
+                         "Qual é a capital da França?", "Vai chover amanhã?"):
+            with self.subTest(question=question):
+                client = FakeClient([])
+                agent = Agent(Catalog(), client, scope_classifier=lambda *_: {"escopo": "fora"})
+                self.assertEqual(agent.reply(question), OUT_OF_SCOPE_ANSWER)
+                self.assertEqual(client.requests, [])
+                self.assertEqual(agent.last_trace, [])
+                self.assertIsNone(agent.last_model_answer)
+                self.assertEqual(agent.turns[-1][-1]["content"], OUT_OF_SCOPE_ANSWER)
+
+    def test_scope_guard_preserves_store_questions_and_mixed_requests(self):
+        for question in ("Qual a previsão de entrega do pedido 1?",
+                         "Vocês vendem acessórios?", "Fale sobre a loja.",
+                         "Quanto custa o Takamine GD20?", "Qual o preço da bateria?",
+                         "Quero um violão e uma receita de bolo.", "E no PIX?", "continuar"):
+            with self.subTest(question=question):
+                agent = Agent(Catalog(), FakeClient([{"role": "assistant", "content": "Vou verificar."}]))
+                self.assertNotEqual(agent.reply(question), OUT_OF_SCOPE_ANSWER)
+        client = FakeClient([call(), {"role": "assistant", "content": "R$ 2.199,00"}])
+        agent = Agent(Catalog(), client)
+        with patch("emporio.agent.classify_scope", return_value={"escopo": "fora"}):
+            agent.reply("Me ensine uma receita de bolo.")
+        answer = agent.reply("Quanto custa o Takamine GD20?")
+        self.assertIn("2.199", answer)
+        self.assertEqual(agent.last_trace[0]["ferramenta"], "buscar_produtos")
     def test_paginated_response_preserves_other_product_queries(self):
         for extra, expected in (({"nome": "GD20"}, "Takamine GD20"),
                                 ({"nome": "inexistente"}, "Não encontrei produtos"),
