@@ -136,6 +136,36 @@ class Agent:
         """Guarda somente turnos completos, preservando chamadas e resultados."""
         self.turns = (self.turns + [messages])[-MAX_HISTORY_TURNS:]
 
+    def _reply_pix_followup(self, text: str) -> str:
+        """Resolve só uma referência inequívoca na última resposta apresentada."""
+        previous = self._last_presented_product_page
+        products = previous[1].get("produtos", []) if previous else []
+        last_answer = self.turns[-1][-1].get("content", "") if self.turns else ""
+        last_question = self.turns[-1][0].get("content", "") if self.turns else ""
+        searched_name = previous[0].get("nome", "") if previous else ""
+        reference = _normalize(last_question + " " + last_answer)
+        if (len(products) != 1 or previous[1].get("total") != 1
+                or not (products[0]["nome"] in last_answer
+                        or (searched_name and _normalize(searched_name) in reference))):
+            answer = "De qual produto você quer saber o preço no PIX? Informe o nome ou modelo."
+        else:
+            arguments = {"nome": products[0]["nome"], "disponibilidade": "todas"}
+            result = execute_tool(self.catalog, "buscar_produtos", arguments, self.policies, self.orders)
+            self.last_trace.append({"ferramenta": "buscar_produtos", "argumentos": arguments,
+                                    "resultado": result, "origem": "aplicacao"})
+            if "erro" in result:
+                answer = "Não consegui consultar o preço no PIX: " + result["erro"]
+            elif result.get("total") != 1 or len(result.get("produtos", [])) != 1:
+                answer = "Não consegui confirmar o produto. Informe o nome ou modelo para consultar o PIX."
+            else:
+                product = result["produtos"][0]
+                answer = "Na base fornecida:\n" + _product_summary(product)
+                if product["desconto_percentual"] != "0":
+                    answer += " O valor no PIX já considera a promoção, sem desconto adicional."
+                self._last_presented_product_page = (arguments, result)
+        self._save_turn([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
+        return answer
+
     def _reply_next_page(self, text: str) -> str:
         """Avança somente a partir de uma consulta apresentada com sucesso."""
         if self._last_presented_product_page is None:
@@ -255,6 +285,9 @@ class Agent:
             self._save_turn([{"role": "user", "content": text},
                              {"role": "assistant", "content": OUT_OF_SCOPE_ANSWER}])
             return OUT_OF_SCOPE_ANSWER
+        if re.fullmatch(r"(?:e (?:no |via )?pix|(?:quanto (?:fica|custa)|qual (?:o )?(?:valor|preco)) (?:no |via )?pix|no pix)[.!?]*",
+                        _normalize(text).strip()):
+            return self._reply_pix_followup(text)
         if re.fullmatch(r"(?:continuar|(?:mostre (?:a )?|quero (?:a )?)?proxima pagina)[.!?]?", _normalize(text).strip()):
             return self._reply_next_page(text)
         if _accessory_scope_question(text):

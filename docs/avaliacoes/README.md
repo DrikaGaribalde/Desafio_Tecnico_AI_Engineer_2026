@@ -4,6 +4,9 @@ Esta pasta reúne execuções reais, falhas observadas e verificações feitas d
 o desenvolvimento. Os registros refletem versões diferentes do projeto; não são
 um benchmark nem garantia de consistência da versão atual.
 
+Nos registros que separam resposta bruta e apresentada, “Sem substituição” indica
+igualdade entre os textos, sem afirmar ausência de verificações ou proteções da aplicação.
+
 ## Índice
 
 - [Conversas da versão final registrada em 02/11/2026](../conversas/versao-final-2026-11-02/): cinco sessões com respostas brutas, respostas apresentadas e intervenções da aplicação.

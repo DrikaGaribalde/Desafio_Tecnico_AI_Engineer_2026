@@ -156,6 +156,55 @@ class AgentTests(unittest.TestCase):
         scope.start()
         self.addCleanup(scope.stop)
 
+    def test_pix_followup_requeries_the_single_presented_product(self):
+        for name in ("GD20", "KAL-700T", "GF-3D"):
+            with self.subTest(name=name):
+                product = execute_tool(Catalog(), "buscar_produtos", {"nome": name})["produtos"][0]
+                client = FakeClient([
+                    {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                        "name": "buscar_produtos", "arguments": {"nome": name}}}]},
+                    {"role": "assistant", "content": "O " + name + " está na base."},
+                ])
+                agent = Agent(Catalog(), client)
+                agent.reply("Quanto custa " + name + "?")
+                answer = agent.reply("E no PIX?")
+                self.assertIn(product["preco_pix_brl"], answer)
+                self.assertIn(product["disponibilidade"], answer)
+                self.assertEqual(agent.last_trace[0]["argumentos"], {
+                    "nome": product["nome"], "disponibilidade": "todas"})
+                self.assertEqual(agent.last_trace[0]["origem"], "aplicacao")
+                self.assertIsNone(agent.last_model_answer)
+                self.assertEqual(len(client.requests), 2)
+                self.assertEqual(agent.turns[-1][-1]["content"], answer)
+                if name == "KAL-700T":
+                    self.assertIn("sem desconto adicional", answer)
+
+    def test_pix_followup_asks_when_reference_is_missing_multiple_or_stale(self):
+        for arguments in (None, {}, {"nome": "GD20"}):
+            with self.subTest(arguments=arguments):
+                agent = Agent(Catalog(), FakeClient([]))
+                if arguments is not None:
+                    result = execute_tool(agent.catalog, "buscar_produtos", arguments)
+                    agent._last_presented_product_page = (arguments, result)
+                    # Um assunto posterior não deve reutilizar silenciosamente o produto antigo.
+                    agent._save_turn([{"role": "user", "content": "Horários?"},
+                                      {"role": "assistant", "content": "A loja abre às 9h."}])
+                self.assertIn("De qual produto", agent.reply("E no PIX?"))
+                self.assertEqual(agent.last_trace, [])
+
+    def test_pix_followup_does_not_reuse_old_price_after_query_failure(self):
+        agent = Agent(Catalog(), FakeClient([call(), {"role": "assistant", "content": "Takamine GD20"}]))
+        agent.reply("Preço do GD20?")
+        name = agent._last_presented_product_page[1]["produtos"][0]["nome"]
+        for result in ({"erro": "Falha simulada"}, {"total": 0, "produtos": []}):
+            with self.subTest(result=result):
+                agent._save_turn([{"role": "user", "content": "GD20"},
+                                  {"role": "assistant", "content": name}])
+                with patch("emporio.agent.execute_tool", return_value=result):
+                    answer = agent.reply("E no PIX?")
+                self.assertNotIn("2089.05", answer)
+                self.assertIn("Não consegui", answer)
+
     def test_wrong_available_filter_cannot_hide_existing_product(self):
         for name, state in (("GF-3D", "sem estoque"), ("SN-7C", "descontinuado")):
             with self.subTest(name=name):
