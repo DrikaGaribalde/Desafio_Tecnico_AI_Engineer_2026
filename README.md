@@ -126,6 +126,9 @@ Trocas e devoluções têm atendimento apenas informativo: a aplicação apresen
 seções recuperadas, sem iniciar processos, solicitar dados para abertura ou confirmar
 elegibilidade individual. Dados fornecidos espontaneamente não geram aprovação.
 A consulta de pedidos permanece somente leitura. Ver [ADR 0009](docs/adr/0009-devolucoes-informativas.md).
+Nas respostas controladas que combinam pedidos e devolução, os dados autorizados
+do pedido são preservados, incluindo total histórico, itens, previsão e rastreio.
+Isso também vale para uma consulta de pedido após uma pergunta de devolução.
 Recuperar uma seção de troca como dependência de garantia não ativa sozinho a
 resposta controlada: é necessário assunto de troca/devolução reconhecido na conversa.
 Quando essa proteção substitui a resposta em uma consulta conjunta de produtos,

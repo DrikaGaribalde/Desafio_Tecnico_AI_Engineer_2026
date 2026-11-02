@@ -10,6 +10,9 @@ from emporio.prompts import SYSTEM_PROMPT
 from emporio.tools import TOOLS, execute_tool
 
 
+MAX_HISTORY_TURNS = 4
+
+
 def _clarification_focus(text, has_history):
     """Reconhece somente aberturas simples sem dados; consultas explícitas seguem o fluxo normal."""
     if has_history:
@@ -70,6 +73,17 @@ def _informational_policy_answer(sections):
             + excerpts + "\n\nPara tratar de uma troca ou devolução, fale diretamente com o atendimento da loja.")
 
 
+def _order_summary(order: dict) -> str:
+    """Apresenta somente dados autorizados, sem recalcular o total histórico."""
+    items = "; ".join(f"{item['quantidade']} x {item['nome'] or 'nome não informado'}"
+                      for item in order["itens"]) or "não informados"
+    return (f"Na base fornecida, o pedido {order['pedido_id']} consta como {order['status']}. "
+            f"Total registrado: R$ {order['total_registrado_brl']}. Itens: {items}. "
+            f"Previsão de entrega: {order['previsao_entrega'] or 'não informada'} "
+            "(não comprova recebimento). "
+            f"Rastreamento: {order['rastreamento'] or 'não informado'}.")
+
+
 class Agent:
     def __init__(self, catalog, client, max_tool_calls=3, policies=None, orders=None):
         self.catalog = catalog
@@ -83,14 +97,69 @@ class Agent:
         self.last_model_answer = None
         self._exchange_topic = None
 
+    def _save_turn(self, messages: list[dict]) -> None:
+        """Guarda somente turnos completos, preservando chamadas e resultados."""
+        self.turns = (self.turns + [messages])[-MAX_HISTORY_TURNS:]
+
+    def _apply_response_guards(self, answer: str, text: str, topic: str | None) -> str:
+        """Aplica proteções antes de apresentar e guardar a resposta final."""
+        for trace in self.last_trace:
+            if trace["ferramenta"] == "consultar_politicas":
+                contact = trace["resultado"].get("decisoes_confirmadas", {}).get("whatsapp")
+                if contact:
+                    answer = re.sub(r"\(?67\)?\s*3321[-\s]?4500", lambda _: contact, answer)
+        # Não depender da redação do LLM para autorizar acesso ou
+        # concluir elegibilidade quando a própria base não tem os dados.
+        order_results = [trace["resultado"] for trace in self.last_trace
+                         if trace["ferramenta"] == "consultar_pedido"]
+        policy_sections = [section for trace in self.last_trace
+                           if trace["ferramenta"] == "consultar_politicas"
+                           for section in trace["resultado"].get("secoes", [])]
+        exchange_sections = any(section["id"] == "4" or section["id"].startswith("4.") for section in policy_sections)
+        denied = next((result for result in order_results if result.get("encontrado") is False), None)
+        owned = next((result for result in order_results if result.get("encontrado") is True), None)
+        products = [product for trace in self.last_trace
+                    if trace["ferramenta"] == "buscar_produtos"
+                    for product in trace["resultado"].get("produtos", [])]
+        if denied is not None:
+            answer = denied["mensagem"]
+        # Garantia recupera 4.2 como dependência; isso, sozinho,
+        # não indica intenção de trocar ou devolver.
+        elif exchange_sections and (topic or self._exchange_topic):
+            self._exchange_topic = topic or self._exchange_topic or "arrependimento em compras online"
+            answer = _informational_policy_answer(policy_sections)
+            if products:
+                summaries = [
+                    f"{p['nome']}: preço original R$ {p['preco_original_brl']}; "
+                    f"desconto {p['desconto_percentual']}%; preço final R$ {p['preco_final_brl']}; "
+                    f"PIX R$ {p['preco_pix_brl']}; {p['disponibilidade']}."
+                    for p in products
+                ]
+                answer = "Na base fornecida:\n" + "\n".join(summaries) + "\n\n" + answer
+                if any(t['resultado'].get('limitado') for t in self.last_trace
+                       if t['ferramenta'] == 'buscar_produtos'):
+                    answer += "\nHá mais opções na base; a lista foi limitada a dez itens por consulta."
+            if owned is not None:
+                answer = _order_summary(owned) + "\n\n" + answer
+        elif owned is not None and self._exchange_topic:
+            answer = (_order_summary(owned) + " "
+                      "Esta consulta não inicia uma troca ou devolução. "
+                      "Para solicitar atendimento sobre esse caso, fale diretamente com a loja.")
+        elif (len(products) == 1 and products[0]["disponibilidade"] == "sem estoque"
+              and re.search(r"disponiv|estoque", _normalize(text))
+              and not re.search(r"preco|custa|valor|quanto|promoc", _normalize(text))):
+            answer = (f"O {products[0]['nome']} está sem estoque na base fornecida. "
+                      "Quer que eu consulte modelos parecidos? O que você mais gostou nele?")
+        return answer
+
     def _reply_exchange_policy(self, text, topic):
         result = execute_tool(self.catalog, "consultar_politicas", {"pergunta": topic}, self.policies, self.orders)
         self.last_trace.append({"ferramenta": "consultar_politicas", "argumentos": {"pergunta": topic},
                                 "resultado": result, "origem": "aplicacao"})
         answer = _informational_policy_answer(result.get("secoes", []))
         self._exchange_topic = topic
-        self.turns = (self.turns + [[{"role": "user", "content": text},
-                                    {"role": "assistant", "content": answer}]])[-4:]
+        self._save_turn([{"role": "user", "content": text},
+                         {"role": "assistant", "content": answer}])
         return answer
 
     def reply(self, text):
@@ -119,12 +188,10 @@ class Agent:
                     if re.search(r"\bcordas?\b", _normalize(text)):
                         answer += (" Se você quis dizer substituir as cordas de um instrumento, "
                                    "não tenho informações para confirmar esse serviço de manutenção na loja.")
-                # Rodapé oculto no terminal; a referência continua em last_trace.
-                # answer += "\n\nFontes consultadas: " + scope["referencia"] + "."
             else:
                 answer = "Não consegui confirmar essa informação no manual agora. Você pode tentar novamente daqui a pouco."
-            self.turns = (self.turns + [[{"role": "user", "content": text},
-                                        {"role": "assistant", "content": answer}]])[-4:]
+            self._save_turn([{"role": "user", "content": text},
+                             {"role": "assistant", "content": answer}])
             return answer
         topic = _exchange_policy_topic(text)
         normalized = _normalize(text)
@@ -144,7 +211,7 @@ class Agent:
             self._exchange_topic = None
         # Mantém turnos completos para não separar chamadas de seus resultados.
         history = []
-        for turn in reversed(self.turns[-4:]):
+        for turn in reversed(self.turns[-MAX_HISTORY_TURNS:]):
             if len(json.dumps(turn, ensure_ascii=False)) + len(json.dumps(history, ensure_ascii=False)) > 10000:
                 break
             history = turn + history
@@ -178,63 +245,9 @@ class Agent:
                     if not answer:
                         raise OllamaError("O modelo não produziu uma resposta. Tente reformular a pergunta.")
                     self.last_model_answer = answer
-                    for trace in self.last_trace:
-                        if trace["ferramenta"] == "consultar_politicas":
-                            contact = trace["resultado"].get("decisoes_confirmadas", {}).get("whatsapp")
-                            if contact:
-                                answer = re.sub(r"\(?67\)?\s*3321[-\s]?4500", lambda _: contact, answer)
-                    # Não depender da redação do LLM para autorizar acesso ou
-                    # concluir elegibilidade quando a própria base não tem os dados.
-                    order_results = [trace["resultado"] for trace in self.last_trace
-                                     if trace["ferramenta"] == "consultar_pedido"]
-                    policy_sections = [section for trace in self.last_trace
-                                       if trace["ferramenta"] == "consultar_politicas"
-                                       for section in trace["resultado"].get("secoes", [])]
-                    exchange_sections = any(section["id"] == "4" or section["id"].startswith("4.") for section in policy_sections)
-                    denied = next((result for result in order_results if result.get("encontrado") is False), None)
-                    owned = next((result for result in order_results if result.get("encontrado") is True), None)
-                    products = [product for trace in self.last_trace
-                                if trace["ferramenta"] == "buscar_produtos"
-                                for product in trace["resultado"].get("produtos", [])]
-                    if denied is not None:
-                        answer = denied["mensagem"]
-                    # Garantia recupera 4.2 como dependência; isso, sozinho,
-                    # não indica intenção de trocar ou devolver.
-                    elif exchange_sections and (topic or self._exchange_topic):
-                        self._exchange_topic = topic or self._exchange_topic or "arrependimento em compras online"
-                        answer = _informational_policy_answer(policy_sections)
-                        if products:
-                            summaries = [
-                                f"{p['nome']}: preço original R$ {p['preco_original_brl']}; "
-                                f"desconto {p['desconto_percentual']}%; preço final R$ {p['preco_final_brl']}; "
-                                f"PIX R$ {p['preco_pix_brl']}; {p['disponibilidade']}."
-                                for p in products
-                            ]
-                            answer = "Na base fornecida:\n" + "\n".join(summaries) + "\n\n" + answer
-                            if any(t['resultado'].get('limitado') for t in self.last_trace
-                                   if t['ferramenta'] == 'buscar_produtos'):
-                                answer += "\nHá mais opções na base; a lista foi limitada a dez itens por consulta."
-                        if owned is not None:
-                            answer = f"Na base fornecida, o pedido {owned['pedido_id']} consta como {owned['status']}.\n\n" + answer
-                    elif owned is not None and self._exchange_topic:
-                        answer = (f"Na base fornecida, o pedido {owned['pedido_id']} consta como {owned['status']}. "
-                                  "Esta consulta não inicia uma troca ou devolução. "
-                                  "Para solicitar atendimento sobre esse caso, fale diretamente com a loja.")
-                    elif (len(products) == 1 and products[0]["disponibilidade"] == "sem estoque"
-                          and re.search(r"disponiv|estoque", _normalize(text))
-                          and not re.search(r"preco|custa|valor|quanto|promoc", _normalize(text))):
-                        answer = (f"O {products[0]['nome']} está sem estoque na base fornecida. "
-                                  "Quer que eu consulte modelos parecidos? O que você mais gostou nele?")
+                    answer = self._apply_response_guards(answer, text, topic)
                     current.append({**message, "content": answer})
-                    self.turns = (self.turns + [current])[-4:]
-                    references = list(dict.fromkeys(
-                        section["referencia"] for trace in self.last_trace
-                        if trace["ferramenta"] == "consultar_politicas"
-                        for section in trace["resultado"].get("secoes", [])
-                    ))
-                    # Rodapé oculto no terminal; referências permanecem em last_trace.
-                    # if references:
-                    #     answer += "\n\nFontes consultadas: " + "; ".join(references) + "."
+                    self._save_turn(current)
                     return answer
                 if count + len(calls) > self.max_tool_calls:
                     return "Não consegui concluir a consulta dentro do limite de ferramentas. Tente uma pergunta mais específica."

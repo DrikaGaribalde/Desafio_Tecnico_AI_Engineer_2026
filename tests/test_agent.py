@@ -236,6 +236,23 @@ class AgentTests(unittest.TestCase):
         agent.reply("E ele?")
         self.assertTrue(any(m.get("content") == "Preço do GD20?" for m in client.requests[2]))
 
+    def test_history_keeps_four_complete_turns_across_reply_paths(self):
+        client = FakeClient([call(), {"role": "assistant", "content": "R$ 2.199,00"}])
+        agent = Agent(Catalog(), client)
+        agent.reply("Preço do GD20?")
+        self.assertEqual([m["role"] for m in agent.turns[0]],
+                         ["user", "assistant", "tool", "assistant"])
+        for question in ("Posso devolver?", "Vocês vendem cabo?", "Posso trocar?", "Vocês vendem palhetas?"):
+            agent.reply(question)
+        self.assertEqual(len(agent.turns), 4)
+        self.assertEqual(agent.turns[0][0]["content"], "Posso devolver?")
+        for turn in agent.turns:
+            self.assertEqual(turn[0]["role"], "user")
+            self.assertEqual(turn[-1]["role"], "assistant")
+        # Antes da remoção, o primeiro turno também foi armazenado completo.
+        self.assertEqual([m["role"] for m in client.requests[1][-3:]],
+                         ["user", "assistant", "tool"])
+
     def test_limit_stops_repeated_calls(self):
         client = FakeClient([call(), call(), call(), call()])
         agent = Agent(Catalog(), client, max_tool_calls=3)

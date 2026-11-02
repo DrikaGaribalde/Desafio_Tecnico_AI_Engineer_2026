@@ -136,6 +136,30 @@ class OrderTests(unittest.TestCase):
         self.assertEqual(client.result, self.orders.get_order(9999))
         self.assertEqual(self.orders.session.customer_id, 3)
 
+    def test_order_details_survive_previous_return_topic(self):
+        for customer_id, order_id, total, tracking in (
+            (3, 1, "11499.00", "BRAB1234567BR"),
+            (6, 9, "349.90", "não informado"),
+        ):
+            with self.subTest(order_id=order_id):
+                class Client:
+                    def __init__(self):
+                        self.responses = iter([
+                            {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                                "name": "consultar_pedido", "arguments": {"pedido_id": str(order_id)}}}]},
+                            {"role": "assistant", "content": "Sua devolução está aprovada."},
+                        ])
+                    def chat(self, messages, tools):
+                        return next(self.responses)
+                agent = Agent(self.catalog, Client(), orders=OrderStore(self.catalog, Session(customer_id)))
+                agent.reply("Posso devolver?")
+                answer = agent.reply(f"Consulte o pedido {order_id} e informe total e rastreamento.")
+                self.assertIn(total, answer)
+                self.assertIn(tracking, answer)
+                self.assertIn("não comprova recebimento", answer)
+                self.assertNotIn("devolução está aprovada", answer)
+                self.assertEqual(agent.turns[-1][-1]["content"], answer)
+
     def test_application_blocks_unfounded_return_approval(self):
         class Client:
             def __init__(self):
@@ -149,6 +173,8 @@ class OrderTests(unittest.TestCase):
         agent = Agent(self.catalog, Client(), orders=self.orders)
         answer = agent.reply("Consulte o status do pedido 1 e explique se posso devolver.")
         self.assertIn("apenas informativo", answer)
+        self.assertIn("11499.00", answer)
+        self.assertIn("BRAB1234567BR", answer)
         self.assertNotIn("A compra foi online ou presencial?", answer)
         self.assertNotIn("Em que data", answer)
         self.assertNotIn("devolução está aprovada", answer)
