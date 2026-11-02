@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from emporio.agent import Agent
 from emporio.catalog import Catalog
@@ -13,6 +13,11 @@ from emporio.tools import execute_tool
 
 
 class OrderTests(unittest.TestCase):
+    def setUp(self):
+        scope = patch("emporio.agent.classify_scope", return_value={"escopo": "loja"})
+        scope.start()
+        self.addCleanup(scope.stop)
+
     @classmethod
     def setUpClass(cls):
         cls.catalog = Catalog()

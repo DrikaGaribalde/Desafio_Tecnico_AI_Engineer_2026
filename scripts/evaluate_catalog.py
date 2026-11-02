@@ -1,6 +1,6 @@
 """Executa conversas reais com o agente e registra mensagens e ferramentas.
 
-Uso: py -3.12 -m scripts.evaluate_catalog
+Uso: py -3.12 -m scripts.evaluate_catalog --saida docs/avaliacoes/nova-execucao
 """
 
 import argparse
@@ -24,10 +24,10 @@ SCENARIOS = [
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--saida", default="docs/conversas")
+    parser.add_argument("--saida", required=True, help="Pasta nova para os registros; não sobrescreve históricos.")
     args = parser.parse_args()
     output = Path(__file__).resolve().parents[1] / args.saida
-    output.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=False)
     for name, questions in SCENARIOS:
         agent = Agent(Catalog(), OllamaClient())
         lines = [f"# Conversa real — {name}", "",
@@ -37,10 +37,14 @@ def main():
             answer = agent.reply(question)
             elapsed = perf_counter() - start
             lines += [f"**Cliente:** {question}", "", "Ferramentas e resultados:", "", "```json",
-                      json.dumps({"ferramentas": agent.last_trace, "contexto": agent.last_usage},
+                      json.dumps({"classificacao_escopo": agent.last_scope,
+                                  "resposta_bruta_modelo": agent.last_model_answer,
+                                  "ferramentas": agent.last_trace, "contexto": agent.last_usage},
                                  ensure_ascii=False, indent=2), "```", "",
                       f"**Agente:** {answer}", "", f"Tempo do turno: {elapsed:.1f} s.", ""]
             print(json.dumps({"cenario": name, "pergunta": question, "trace": agent.last_trace,
+                              "classificacao_escopo": agent.last_scope,
+                              "resposta_bruta_modelo": agent.last_model_answer,
                               "resposta": answer, "contexto": agent.last_usage,
                               "segundos": round(elapsed, 1)}, ensure_ascii=True), flush=True)
         (output / f"{name}.md").write_text("\n".join(lines), encoding="utf-8")

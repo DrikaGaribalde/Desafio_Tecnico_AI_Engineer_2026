@@ -77,6 +77,13 @@ O modelo solicita ferramentas; a aplicação valida os argumentos, consulta os a
 e devolve resultados estruturados. Algumas respostas são controladas pela aplicação
 para conter falhas observadas, como aprovações indevidas de devolução.
 
+Antes do atendimento, o modelo identifica se a mensagem é da loja, fora do escopo
+ou ambígua, considerando o histórico recente. A aplicação redireciona assuntos
+alheios; os demais seguem para consulta ou esclarecimento. Essa etapa acrescenta
+uma chamada ao Ollama por mensagem. Se a classificação falhar, o agente informa
+o erro e não executa consultas. Os detalhes estão na
+[avaliação de escopo](docs/avaliacoes/escopo/classificacao-intencao-2026-11-02.md).
+
 | Escolha | Motivo |
 | --- | --- |
 | Python e CLI, sem framework de agentes | Solução simples e explicável no prazo de dois dias |
@@ -92,10 +99,13 @@ para conter falhas observadas, como aprovações indevidas de devolução.
 | `consultar_pedido` | Dados do pedido autorizado para o cliente da sessão |
 
 O prompt não contém mapeamentos fixos de nomes de produtos para IDs.
-Há limite de três chamadas por turno e contexto de **12.288 tokens**, com remoção de
+Há limite de três chamadas de ferramentas por turno e contexto de **12.288 tokens**, com remoção de
 turnos antigos quando necessário. O PDF inteiro não é enviado ao modelo.
 
 - Disponibilidade distingue estoque, descontinuados e lançamentos futuros.
+  Se uma busca por nome retornar vazia com o filtro de disponíveis, a aplicação
+  também verifica indisponíveis, mantendo categoria e orçamento. Assim, falta de
+  estoque não é confundida com ausência do produto nos resultados.
 - Promoções usam `is_active`; havendo várias, aplica-se somente o maior desconto.
   PIX não acumula com promoção. Os cálculos são feitos em Python.
 - Pedidos têm autorização em Python pelo cliente da sessão e preservam o total histórico.
@@ -118,29 +128,41 @@ Justificativas e alternativas estão nas [ADRs](docs/adr/), especialmente
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Na última validação local desta revisão, **82 testes passaram**, cobrindo filtros,
+Na última validação local desta revisão, **95 testes passaram**, cobrindo filtros,
 cálculos, disponibilidade, políticas, contexto, autorização, paginação e falhas.
 Testes com clientes simulados não comprovam a
 qualidade do modelo. Execuções reais e falhas estão nas avaliações de
 [produtos](docs/avaliacoes/README.md), [políticas](docs/avaliacoes/politicas/README.md),
 [pedidos](docs/avaliacoes/pedidos/README.md) e [estilo](docs/avaliacoes/estilo/README.md).
 
-Cinco conversas reais da etapa de catálogo:
+Cinco conversas reais da versão registrada em 02/11/2026:
 
-1. [Preço do Takamine GD20](docs/conversas/01-preco.md).
-2. [Violões disponíveis até R$ 1.000](docs/conversas/02-orcamento.md).
-3. [Produto sem estoque](docs/conversas/03-sem-estoque.md).
-4. [Promoção ativa](docs/conversas/04-promocao.md).
-5. [Continuidade sobre um produto](docs/conversas/05-continuidade.md).
+1. [Apresentação, fora do escopo e acessórios](docs/conversas/versao-final-2026-11-02/01-loja-e-escopo.md).
+2. [Orçamento e paginação](docs/conversas/versao-final-2026-11-02/02-orcamento-e-paginacao.md).
+3. [Preço e continuidade no PIX](docs/conversas/versao-final-2026-11-02/03-preco-e-continuidade.md).
+4. [Indisponibilidade, descontinuado e promoção](docs/conversas/versao-final-2026-11-02/04-disponibilidade-e-promocao.md).
+5. [Pedido próprio, pedido alheio e devolução informativa](docs/conversas/versao-final-2026-11-02/05-pedidos-e-devolucao.md).
 
-Para repetir a avaliação de catálogo com Ollama, preservando esses exemplos:
+Cada arquivo separa classificação de escopo, resposta bruta do modelo, resposta
+apresentada e intervenções da aplicação. Inclui as ferramentas, resultados e métricas,
+sem editar as falas para ocultar falhas. O código e o modelo utilizados estão
+identificados nos [metadados](docs/conversas/versao-final-2026-11-02/metadados.json).
+Nesta rodada, a continuidade “E no PIX?” respondeu somente a regra geral, e a
+resposta de promoção omitiu preço original e percentual. Os registros preservam
+essas limitações; não representam aprovação integral das respostas.
+“Sem substituição” indica igualdade entre os textos bruto e apresentado, sem
+afirmar ausência de verificações ou proteções da aplicação.
+Os [cinco exemplos anteriores de catálogo](docs/avaliacoes/catalogo-historico/) foram
+arquivados nas avaliações, com as falas originais preservadas.
+
+Para repetir as cinco conversas com Ollama, escolha uma pasta nova:
 
 ```powershell
-.\.venv\Scripts\python.exe -X utf8 -m scripts.evaluate_catalog --saida docs/avaliacoes/catalogo-nova-execucao
+.\.venv\Scripts\python.exe -X utf8 -m scripts.evaluate_final --saida docs/conversas/nova-execucao
 ```
 
-Use uma pasta nova: esse script sobrescreve arquivos de mesmo nome no destino.
-Os registros históricos refletem versões sucessivas e não garantem consistência atual.
+Esse script recusa uma pasta existente. Os registros são execuções pontuais,
+não garantem consistência em outras conversas ou após mudanças no código.
 
 ## Dados e estrutura
 
@@ -162,6 +184,8 @@ e revise a extração. Somente essa preparação exige `pdftotext` (Poppler) no 
 - Dados estáticos, sem integração comercial ou com transportadoras; autenticação simulada.
 - O modelo pode omitir condições, deixar de consultar ferramentas ou contradizer resultados.
   Os controles não validam semanticamente todas as respostas.
+- A classificação de escopo pode errar ou perder referências do histórico. Em perguntas
+  mistas, o atendimento é orientado a responder somente à parte da loja.
 - Busca textual limitada para sinônimos e perguntas mistas; inconsistências dos dados
   podem afetar os resultados.
 - O orçamento de contexto é estimado de forma conservadora. Conversas podem perder

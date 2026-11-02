@@ -7,10 +7,15 @@ from emporio.catalog import _normalize
 from emporio.context import fits_context
 from emporio.ollama_client import OllamaError
 from emporio.prompts import SYSTEM_PROMPT
+from emporio.scope import classify_scope
 from emporio.tools import TOOLS, execute_tool
 
 
 MAX_HISTORY_TURNS = 4
+OUT_OF_SCOPE_ANSWER = (
+    "Esse assunto fica fora do atendimento da Empório da Música. "
+    "Posso ajudar com instrumentos musicais, produtos, pedidos e políticas da loja."
+)
 
 
 def _clarification_focus(text, has_history):
@@ -83,6 +88,13 @@ def _product_page_answer(result: dict) -> str:
     if "erro" in result:
         return "Não consegui consultar os produtos: " + result["erro"]
     if not result["produtos"]:
+        if result.get("indisponiveis"):
+            lines = ["Não há produtos disponíveis para esses filtros. Na base fornecida:"]
+            lines.extend(f"- {p['nome']}: {p['disponibilidade']}; indisponível para compra."
+                         for p in result["indisponiveis"])
+            if result["total_indisponiveis"] > len(result["indisponiveis"]):
+                lines.append("Há outros indisponíveis; informe um modelo mais específico.")
+            return "\n".join(lines)
         return "Não encontrei produtos para esses filtros na base fornecida."
     lines = [f"Na base fornecida: página {result['pagina']} de {result['total_paginas']}, "
              f"{result['total']} produtos encontrados."]
@@ -105,9 +117,11 @@ def _order_summary(order: dict) -> str:
 
 
 class Agent:
-    def __init__(self, catalog, client, max_tool_calls=3, policies=None, orders=None):
+    def __init__(self, catalog, client, max_tool_calls=3, policies=None, orders=None, scope_classifier=None):
         self.catalog = catalog
         self.client = client
+        self.scope_classifier = scope_classifier
+        self.last_scope = None
         self.max_tool_calls = max_tool_calls
         self.turns = []
         self.last_trace = []
@@ -182,16 +196,32 @@ class Agent:
             answer = (_order_summary(owned) + " "
                       "Esta consulta não inicia uma troca ou devolução. "
                       "Para solicitar atendimento sobre esse caso, fale diretamente com a loja.")
-        elif (len(products) == 1 and products[0]["disponibilidade"] == "sem estoque"
+        elif (len(products) == 1 and not products[0]["disponivel_para_compra"]
               and re.search(r"disponiv|estoque", _normalize(text))
               and not re.search(r"preco|custa|valor|quanto|promoc", _normalize(text))):
-            answer = (f"O {products[0]['nome']} está sem estoque na base fornecida. "
+            answer = (f"O {products[0]['nome']} está {products[0]['disponibilidade']} na base fornecida. "
                       "Quer que eu consulte modelos parecidos? O que você mais gostou nele?")
         elif all(t["ferramenta"] == "buscar_produtos" for t in self.last_trace) and any(
-                 t["ferramenta"] == "buscar_produtos" and t["resultado"].get("limitado")
+                 t["ferramenta"] == "buscar_produtos" and (t["resultado"].get("limitado")
+                                                         or t["resultado"].get("indisponiveis"))
                  for t in self.last_trace):
             answer = "\n\n".join(_product_page_answer(t["resultado"]) for t in self.last_trace
                                     if t["ferramenta"] == "buscar_produtos")
+        # O modelo já sugeriu clicar no produto, embora a interface seja uma CLI.
+        # Substitui apenas a frase com instrução de navegação não suportada.
+        sentences = re.split(r"(?<=[.!?])\s+|\n+", answer)
+        navigation = re.compile(
+            r"\b(?:clic\w*|cliqu\w*|aperte|pressione)\b.*\b(?:produto|botao|link|comprar|compra)\b"
+            r"|\b(?:adicione|adicionar|coloque|colocar|acesse|acessar|abra|abrir|va|ir)\b.*\b(?:carrinho|checkout|pagina de compra)\b"
+            r"|\b(?:finalize|finalizar|conclua|concluir)\b.*\b(?:aqui|checkout|carrinho)\b"
+        )
+        if any(navigation.search(_normalize(sentence)) for sentence in sentences):
+            kept = [sentence for sentence in sentences if not navigation.search(_normalize(sentence))]
+            # A frase removida também pode conter o preço: conserva os dados consultados.
+            if products:
+                kept = ["Na base fornecida:", *(_product_summary(p) for p in products), *kept]
+            kept.append("Este atendimento apenas consulta informações. Para comprar, fale diretamente com a loja.")
+            answer = "\n".join(kept)
         return answer
 
     def _reply_exchange_policy(self, text, topic):
@@ -208,10 +238,23 @@ class Agent:
         self.last_trace = []
         self.last_usage = []
         self.last_model_answer = None
+        self.last_scope = None
         if not text.strip():
             return "Digite uma pergunta sobre os instrumentos."
         if len(text) > 2000:
             return "Sua mensagem é muito longa. Use até 2.000 caracteres."
+        try:
+            classifier = self.scope_classifier or classify_scope
+            self.last_scope = classifier(self.client, text, self.turns)
+            if self.last_scope.get("uso"):
+                self.last_usage.append({**self.last_scope["uso"], "fase": "escopo"})
+        except OllamaError as exc:
+            self.last_scope = {"erro": str(exc)}
+            return str(exc)
+        if self.last_scope["escopo"] == "fora":
+            self._save_turn([{"role": "user", "content": text},
+                             {"role": "assistant", "content": OUT_OF_SCOPE_ANSWER}])
+            return OUT_OF_SCOPE_ANSWER
         if re.fullmatch(r"(?:continuar|(?:mostre (?:a )?|quero (?:a )?)?proxima pagina)[.!?]?", _normalize(text).strip()):
             return self._reply_next_page(text)
         if _accessory_scope_question(text):

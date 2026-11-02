@@ -82,7 +82,7 @@ Esses testes usam dados reais e fontes sintéticas e não precisam do Ollama.
 
 A regressão real do catálogo foi registrada em `regressao-produtos/` e repetida após
 compactar o JSON em `regressao-produtos-final/`. Os exemplos originais em
-`docs/conversas/` foram preservados. A primeira regressão confirmou filtros e preços,
+`docs/avaliacoes/catalogo-historico/` foram preservados. A primeira regressão confirmou filtros e preços,
 mas o modelo descreveu dez resultados como se fossem todos, apesar de haver doze.
 Foi adicionado um aviso explícito de lista parcial ao retorno da ferramenta.
 

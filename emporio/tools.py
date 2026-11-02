@@ -109,6 +109,14 @@ def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None, or
         arguments.get("nome", "").strip(), category=arguments.get("categoria", "").strip(),
         max_price=maximum, available_only=availability == "disponiveis",
     )
+    # Uma busca vazia de disponíveis não prova que o produto inexiste.
+    # Mantém os filtros comerciais e separa o diagnóstico da lista para compra.
+    unavailable = []
+    if not products and availability == "disponiveis" and arguments.get("nome", "").strip():
+        unavailable = catalog.search_products(
+            arguments["nome"].strip(), category=arguments.get("categoria", "").strip(),
+            max_price=maximum, available_only=False,
+        )
     total_pages = (len(products) + PRODUCTS_PER_PAGE - 1) // PRODUCTS_PER_PAGE
     if page > max(1, total_pages):
         return {"erro": "Página fora do intervalo. Use uma página válida para os mesmos filtros.",
@@ -134,6 +142,13 @@ def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None, or
     result = {"fonte": "CSV estático do desafio", "total": len(products),
               "limitado": total_pages > 1, "pagina": page, "total_paginas": total_pages,
               "proxima_pagina": page + 1 if page < total_pages else None, "produtos": items}
+    if unavailable:
+        result["total_indisponiveis"] = len(unavailable)
+        result["indisponiveis"] = [
+            {"nome": p.name, "disponivel_para_compra": False,
+             "disponibilidade": {"discontinued": "descontinuado", "coming_soon": "lançamento futuro"}.get(p.status, "sem estoque")}
+            for p in unavailable[:PRODUCTS_PER_PAGE]
+        ]
     if total_pages > 1:
         result["aviso"] = (f"Página {page} de {total_pages}, com {len(items)} de {len(products)} correspondências. "
                            "Informe a página e ofereça a próxima somente se proxima_pagina não for nula.")

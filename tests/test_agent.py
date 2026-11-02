@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from urllib.error import URLError
 
-from emporio.agent import Agent
+from emporio.agent import Agent, OUT_OF_SCOPE_ANSWER
 from emporio.catalog import Catalog
 from emporio.context import fits_context
 from emporio.ollama_client import OllamaClient, OllamaError
@@ -41,6 +41,29 @@ class ToolTests(unittest.TestCase):
             with self.subTest(query=query):
                 result = execute_tool(self.catalog, "buscar_produtos", {"nome": query})
                 self.assertEqual(result["produtos"][0]["disponibilidade"], state)
+
+    def test_available_filter_diagnoses_existing_unavailable_models(self):
+        for name, state in (("GF-3D", "sem estoque"), ("SN-7C", "descontinuado"),
+                            ("KA-ABP-CTG", "lançamento futuro")):
+            with self.subTest(name=name):
+                result = execute_tool(self.catalog, "buscar_produtos", {"nome": name, "disponibilidade": "disponiveis"})
+                self.assertEqual(result["produtos"], [])
+                self.assertEqual(result["total"], 0)
+                self.assertEqual(result["total_indisponiveis"], 1)
+                self.assertEqual(result["indisponiveis"][0]["disponibilidade"], state)
+                self.assertFalse(result["indisponiveis"][0]["disponivel_para_compra"])
+
+    def test_unavailable_diagnosis_preserves_other_filters(self):
+        for args in ({"nome": "GF-3D", "preco_maximo": "100"},
+                     {"nome": "GF-3D", "categoria": "Ukuleles"},
+                     {"nome": "produto inexistente"}, {"categoria": "inexistente"}):
+            with self.subTest(args=args):
+                result = execute_tool(self.catalog, "buscar_produtos", {**args, "disponibilidade": "disponiveis"})
+                self.assertEqual(result["produtos"], [])
+                self.assertNotIn("indisponiveis", result)
+        result = execute_tool(self.catalog, "buscar_produtos", {"categoria": "Violões", "disponibilidade": "disponiveis"})
+        self.assertTrue(all(p["disponivel_para_compra"] for p in result["produtos"]))
+        self.assertNotIn("indisponiveis", result)
 
     def test_promotion_values_and_no_matches(self):
         product = execute_tool(self.catalog, "buscar_produtos", {"nome": "KAL-700T"})["produtos"][0]
@@ -127,6 +150,68 @@ def call():
 
 
 class AgentTests(unittest.TestCase):
+    def setUp(self):
+        # Estes testes isolam o atendimento. A classificação é exercitada em test_scope.
+        scope = patch("emporio.agent.classify_scope", return_value={"escopo": "loja"})
+        scope.start()
+        self.addCleanup(scope.stop)
+
+    def test_wrong_available_filter_cannot_hide_existing_product(self):
+        for name, state in (("GF-3D", "sem estoque"), ("SN-7C", "descontinuado")):
+            with self.subTest(name=name):
+                client = FakeClient([
+                    {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                        "name": "buscar_produtos", "arguments": {"nome": name, "disponibilidade": "disponiveis"}}}]},
+                    {"role": "assistant", "content": "Esse produto não existe na loja."},
+                ])
+                agent = Agent(Catalog(), client)
+                answer = agent.reply(f"O {name} está disponível?")
+                self.assertIn(name, answer)
+                self.assertIn(state, answer)
+                self.assertIn("indisponível para compra", answer)
+                self.assertNotIn("não existe", answer)
+                self.assertEqual(agent.turns[-1][-1]["content"], answer)
+
+    def test_unavailable_diagnosis_does_not_erase_other_product(self):
+        client = FakeClient([
+            {"role": "assistant", "content": "", "tool_calls": [
+                {"function": {"name": "buscar_produtos", "arguments": {"nome": "GD20"}}},
+                {"function": {"name": "buscar_produtos", "arguments": {"nome": "GF-3D", "disponibilidade": "disponiveis"}}},
+            ]},
+            {"role": "assistant", "content": "Não encontrei GF-3D."},
+        ])
+        answer = Agent(Catalog(), client).reply("Quanto custa GD20 e tem GF-3D?")
+        for part in ("2199.00", "GD20", "GF-3D", "sem estoque"):
+            self.assertIn(part, answer)
+
+    def test_explicit_out_of_scope_requests_redirect_without_tools(self):
+        for question in ("Me ensine uma receita de bolo de cenoura.",
+                         "Quais ingredientes para preparar uma pizza?",
+                         "Qual é a capital da França?", "Vai chover amanhã?"):
+            with self.subTest(question=question):
+                client = FakeClient([])
+                agent = Agent(Catalog(), client, scope_classifier=lambda *_: {"escopo": "fora"})
+                self.assertEqual(agent.reply(question), OUT_OF_SCOPE_ANSWER)
+                self.assertEqual(client.requests, [])
+                self.assertEqual(agent.last_trace, [])
+                self.assertIsNone(agent.last_model_answer)
+                self.assertEqual(agent.turns[-1][-1]["content"], OUT_OF_SCOPE_ANSWER)
+
+    def test_scope_guard_preserves_store_questions_and_mixed_requests(self):
+        for question in ("Qual a previsão de entrega do pedido 1?",
+                         "Vocês vendem acessórios?", "Fale sobre a loja.",
+                         "Quanto custa o Takamine GD20?", "Qual o preço da bateria?",
+                         "Quero um violão e uma receita de bolo.", "E no PIX?", "continuar"):
+            with self.subTest(question=question):
+                agent = Agent(Catalog(), FakeClient([{"role": "assistant", "content": "Vou verificar."}]))
+                self.assertNotEqual(agent.reply(question), OUT_OF_SCOPE_ANSWER)
+        client = FakeClient([call(), {"role": "assistant", "content": "R$ 2.199,00"}])
+        agent = Agent(Catalog(), client)
+        with patch("emporio.agent.classify_scope", return_value={"escopo": "fora"}):
+            agent.reply("Me ensine uma receita de bolo.")
+        answer = agent.reply("Quanto custa o Takamine GD20?")
+        self.assertIn("2.199", answer)
+        self.assertEqual(agent.last_trace[0]["ferramenta"], "buscar_produtos")
     def test_paginated_response_preserves_other_product_queries(self):
         for extra, expected in (({"nome": "GD20"}, "Takamine GD20"),
                                 ({"nome": "inexistente"}, "Não encontrei produtos"),
@@ -220,6 +305,26 @@ class AgentTests(unittest.TestCase):
                             for s in t["resultado"].get("secoes", [])))
         self.assertIsNone(agent._exchange_topic)
         self.assertEqual(agent.turns[-1][-1]["content"], expected)
+
+    def test_purchase_navigation_is_removed_without_losing_product_data(self):
+        for instruction in ("Se quiser comprar, é só clicar no produto e seguir para a página de compra.",
+                            "Adicione o produto ao carrinho.", "Finalize sua compra aqui."):
+            with self.subTest(instruction=instruction):
+                raw = "O GD20 custa R$ 2.199,00. " + instruction
+                agent = Agent(Catalog(), FakeClient([call(), {"role": "assistant", "content": raw}]))
+                answer = agent.reply("Quanto custa o Takamine GD20?")
+                self.assertNotIn(instruction, answer)
+                self.assertIn("2199.00", answer)
+                self.assertIn("fale diretamente com a loja", answer)
+                self.assertEqual(agent.last_model_answer, raw)
+                self.assertEqual(agent.turns[-1][-1]["content"], answer)
+
+    def test_purchase_policy_and_supported_pagination_are_preserved(self):
+        for answer in ("Compras online têm regras próprias. Consulte a loja para comprar.",
+                       "Digite 'continuar' para ver mais opções.",
+                       "Não há carrinho ou checkout neste atendimento."):
+            agent = Agent(Catalog(), FakeClient([{"role": "assistant", "content": answer}]))
+            self.assertEqual(agent.reply("Como funciona a compra?"), answer)
 
     def test_price_and_return_preserves_product_but_blocks_approval(self):
         client = FakeClient([
