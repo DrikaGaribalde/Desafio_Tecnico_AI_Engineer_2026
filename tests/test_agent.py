@@ -306,6 +306,26 @@ class AgentTests(unittest.TestCase):
         self.assertIsNone(agent._exchange_topic)
         self.assertEqual(agent.turns[-1][-1]["content"], expected)
 
+    def test_purchase_navigation_is_removed_without_losing_product_data(self):
+        for instruction in ("Se quiser comprar, é só clicar no produto e seguir para a página de compra.",
+                            "Adicione o produto ao carrinho.", "Finalize sua compra aqui."):
+            with self.subTest(instruction=instruction):
+                raw = "O GD20 custa R$ 2.199,00. " + instruction
+                agent = Agent(Catalog(), FakeClient([call(), {"role": "assistant", "content": raw}]))
+                answer = agent.reply("Quanto custa o Takamine GD20?")
+                self.assertNotIn(instruction, answer)
+                self.assertIn("2199.00", answer)
+                self.assertIn("fale diretamente com a loja", answer)
+                self.assertEqual(agent.last_model_answer, raw)
+                self.assertEqual(agent.turns[-1][-1]["content"], answer)
+
+    def test_purchase_policy_and_supported_pagination_are_preserved(self):
+        for answer in ("Compras online têm regras próprias. Consulte a loja para comprar.",
+                       "Digite 'continuar' para ver mais opções.",
+                       "Não há carrinho ou checkout neste atendimento."):
+            agent = Agent(Catalog(), FakeClient([{"role": "assistant", "content": answer}]))
+            self.assertEqual(agent.reply("Como funciona a compra?"), answer)
+
     def test_price_and_return_preserves_product_but_blocks_approval(self):
         client = FakeClient([
             {"role": "assistant", "content": "", "tool_calls": [

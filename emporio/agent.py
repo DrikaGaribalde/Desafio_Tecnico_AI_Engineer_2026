@@ -207,6 +207,21 @@ class Agent:
                  for t in self.last_trace):
             answer = "\n\n".join(_product_page_answer(t["resultado"]) for t in self.last_trace
                                     if t["ferramenta"] == "buscar_produtos")
+        # O modelo já sugeriu clicar no produto, embora a interface seja uma CLI.
+        # Substitui apenas a frase com instrução de navegação não suportada.
+        sentences = re.split(r"(?<=[.!?])\s+|\n+", answer)
+        navigation = re.compile(
+            r"\b(?:clic\w*|cliqu\w*|aperte|pressione)\b.*\b(?:produto|botao|link|comprar|compra)\b"
+            r"|\b(?:adicione|adicionar|coloque|colocar|acesse|acessar|abra|abrir|va|ir)\b.*\b(?:carrinho|checkout|pagina de compra)\b"
+            r"|\b(?:finalize|finalizar|conclua|concluir)\b.*\b(?:aqui|checkout|carrinho)\b"
+        )
+        if any(navigation.search(_normalize(sentence)) for sentence in sentences):
+            kept = [sentence for sentence in sentences if not navigation.search(_normalize(sentence))]
+            # A frase removida também pode conter o preço: conserva os dados consultados.
+            if products:
+                kept = ["Na base fornecida:", *(_product_summary(p) for p in products), *kept]
+            kept.append("Este atendimento apenas consulta informações. Para comprar, fale diretamente com a loja.")
+            answer = "\n".join(kept)
         return answer
 
     def _reply_exchange_policy(self, text, topic):
