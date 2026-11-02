@@ -87,7 +87,8 @@ e encerramento com `sair`.
 A primeira regressão de produtos, em `regressao-produtos/`, mostrou que compactar
 demais as descrições prejudicou os filtros escolhidos pelo modelo. As descrições foram
 restauradas; filtros opcionais textuais vazios passaram a significar ausência de filtro.
-A nova execução está em `regressao-produtos-final/`, sem alterar `docs/conversas/`.
+A nova execução está em `regressao-produtos-final/`, sem alterar os exemplos históricos,
+agora arquivados em `docs/avaliacoes/catalogo-historico/`.
 
 Na regressão final, as consultas retornaram corretamente preço do Takamine, violões
 até R$ 1.000, falta de estoque, promoção de 10% e continuidade. Os dados e filtros

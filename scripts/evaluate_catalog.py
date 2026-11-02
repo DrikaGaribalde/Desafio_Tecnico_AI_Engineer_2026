@@ -1,6 +1,6 @@
 """Executa conversas reais com o agente e registra mensagens e ferramentas.
 
-Uso: py -3.12 -m scripts.evaluate_catalog
+Uso: py -3.12 -m scripts.evaluate_catalog --saida docs/avaliacoes/nova-execucao
 """
 
 import argparse
@@ -24,10 +24,10 @@ SCENARIOS = [
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--saida", default="docs/conversas")
+    parser.add_argument("--saida", required=True, help="Pasta nova para os registros; não sobrescreve históricos.")
     args = parser.parse_args()
     output = Path(__file__).resolve().parents[1] / args.saida
-    output.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=False)
     for name, questions in SCENARIOS:
         agent = Agent(Catalog(), OllamaClient())
         lines = [f"# Conversa real — {name}", "",
