@@ -42,6 +42,29 @@ class ToolTests(unittest.TestCase):
                 result = execute_tool(self.catalog, "buscar_produtos", {"nome": query})
                 self.assertEqual(result["produtos"][0]["disponibilidade"], state)
 
+    def test_available_filter_diagnoses_existing_unavailable_models(self):
+        for name, state in (("GF-3D", "sem estoque"), ("SN-7C", "descontinuado"),
+                            ("KA-ABP-CTG", "lançamento futuro")):
+            with self.subTest(name=name):
+                result = execute_tool(self.catalog, "buscar_produtos", {"nome": name, "disponibilidade": "disponiveis"})
+                self.assertEqual(result["produtos"], [])
+                self.assertEqual(result["total"], 0)
+                self.assertEqual(result["total_indisponiveis"], 1)
+                self.assertEqual(result["indisponiveis"][0]["disponibilidade"], state)
+                self.assertFalse(result["indisponiveis"][0]["disponivel_para_compra"])
+
+    def test_unavailable_diagnosis_preserves_other_filters(self):
+        for args in ({"nome": "GF-3D", "preco_maximo": "100"},
+                     {"nome": "GF-3D", "categoria": "Ukuleles"},
+                     {"nome": "produto inexistente"}, {"categoria": "inexistente"}):
+            with self.subTest(args=args):
+                result = execute_tool(self.catalog, "buscar_produtos", {**args, "disponibilidade": "disponiveis"})
+                self.assertEqual(result["produtos"], [])
+                self.assertNotIn("indisponiveis", result)
+        result = execute_tool(self.catalog, "buscar_produtos", {"categoria": "Violões", "disponibilidade": "disponiveis"})
+        self.assertTrue(all(p["disponivel_para_compra"] for p in result["produtos"]))
+        self.assertNotIn("indisponiveis", result)
+
     def test_promotion_values_and_no_matches(self):
         product = execute_tool(self.catalog, "buscar_produtos", {"nome": "KAL-700T"})["produtos"][0]
         self.assertEqual((product["preco_original_brl"], product["desconto_percentual"],
@@ -132,6 +155,34 @@ class AgentTests(unittest.TestCase):
         scope = patch("emporio.agent.classify_scope", return_value={"escopo": "loja"})
         scope.start()
         self.addCleanup(scope.stop)
+
+    def test_wrong_available_filter_cannot_hide_existing_product(self):
+        for name, state in (("GF-3D", "sem estoque"), ("SN-7C", "descontinuado")):
+            with self.subTest(name=name):
+                client = FakeClient([
+                    {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                        "name": "buscar_produtos", "arguments": {"nome": name, "disponibilidade": "disponiveis"}}}]},
+                    {"role": "assistant", "content": "Esse produto não existe na loja."},
+                ])
+                agent = Agent(Catalog(), client)
+                answer = agent.reply(f"O {name} está disponível?")
+                self.assertIn(name, answer)
+                self.assertIn(state, answer)
+                self.assertIn("indisponível para compra", answer)
+                self.assertNotIn("não existe", answer)
+                self.assertEqual(agent.turns[-1][-1]["content"], answer)
+
+    def test_unavailable_diagnosis_does_not_erase_other_product(self):
+        client = FakeClient([
+            {"role": "assistant", "content": "", "tool_calls": [
+                {"function": {"name": "buscar_produtos", "arguments": {"nome": "GD20"}}},
+                {"function": {"name": "buscar_produtos", "arguments": {"nome": "GF-3D", "disponibilidade": "disponiveis"}}},
+            ]},
+            {"role": "assistant", "content": "Não encontrei GF-3D."},
+        ])
+        answer = Agent(Catalog(), client).reply("Quanto custa GD20 e tem GF-3D?")
+        for part in ("2199.00", "GD20", "GF-3D", "sem estoque"):
+            self.assertIn(part, answer)
 
     def test_explicit_out_of_scope_requests_redirect_without_tools(self):
         for question in ("Me ensine uma receita de bolo de cenoura.",

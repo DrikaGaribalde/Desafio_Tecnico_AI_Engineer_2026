@@ -88,6 +88,13 @@ def _product_page_answer(result: dict) -> str:
     if "erro" in result:
         return "Não consegui consultar os produtos: " + result["erro"]
     if not result["produtos"]:
+        if result.get("indisponiveis"):
+            lines = ["Não há produtos disponíveis para esses filtros. Na base fornecida:"]
+            lines.extend(f"- {p['nome']}: {p['disponibilidade']}; indisponível para compra."
+                         for p in result["indisponiveis"])
+            if result["total_indisponiveis"] > len(result["indisponiveis"]):
+                lines.append("Há outros indisponíveis; informe um modelo mais específico.")
+            return "\n".join(lines)
         return "Não encontrei produtos para esses filtros na base fornecida."
     lines = [f"Na base fornecida: página {result['pagina']} de {result['total_paginas']}, "
              f"{result['total']} produtos encontrados."]
@@ -189,13 +196,14 @@ class Agent:
             answer = (_order_summary(owned) + " "
                       "Esta consulta não inicia uma troca ou devolução. "
                       "Para solicitar atendimento sobre esse caso, fale diretamente com a loja.")
-        elif (len(products) == 1 and products[0]["disponibilidade"] == "sem estoque"
+        elif (len(products) == 1 and not products[0]["disponivel_para_compra"]
               and re.search(r"disponiv|estoque", _normalize(text))
               and not re.search(r"preco|custa|valor|quanto|promoc", _normalize(text))):
-            answer = (f"O {products[0]['nome']} está sem estoque na base fornecida. "
+            answer = (f"O {products[0]['nome']} está {products[0]['disponibilidade']} na base fornecida. "
                       "Quer que eu consulte modelos parecidos? O que você mais gostou nele?")
         elif all(t["ferramenta"] == "buscar_produtos" for t in self.last_trace) and any(
-                 t["ferramenta"] == "buscar_produtos" and t["resultado"].get("limitado")
+                 t["ferramenta"] == "buscar_produtos" and (t["resultado"].get("limitado")
+                                                         or t["resultado"].get("indisponiveis"))
                  for t in self.last_trace):
             answer = "\n\n".join(_product_page_answer(t["resultado"]) for t in self.last_trace
                                     if t["ferramenta"] == "buscar_produtos")

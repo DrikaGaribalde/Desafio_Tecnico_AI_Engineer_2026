@@ -103,6 +103,9 @@ Há limite de três chamadas de ferramentas por turno e contexto de **12.288 tok
 turnos antigos quando necessário. O PDF inteiro não é enviado ao modelo.
 
 - Disponibilidade distingue estoque, descontinuados e lançamentos futuros.
+  Se uma busca por nome retornar vazia com o filtro de disponíveis, a aplicação
+  também verifica indisponíveis, mantendo categoria e orçamento. Assim, falta de
+  estoque não é confundida com ausência do produto nos resultados.
 - Promoções usam `is_active`; havendo várias, aplica-se somente o maior desconto.
   PIX não acumula com promoção. Os cálculos são feitos em Python.
 - Pedidos têm autorização em Python pelo cliente da sessão e preservam o total histórico.
@@ -125,7 +128,7 @@ Justificativas e alternativas estão nas [ADRs](docs/adr/), especialmente
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Na última validação local desta revisão, **91 testes passaram**, cobrindo filtros,
+Na última validação local desta revisão, **95 testes passaram**, cobrindo filtros,
 cálculos, disponibilidade, políticas, contexto, autorização, paginação e falhas.
 Testes com clientes simulados não comprovam a
 qualidade do modelo. Execuções reais e falhas estão nas avaliações de
