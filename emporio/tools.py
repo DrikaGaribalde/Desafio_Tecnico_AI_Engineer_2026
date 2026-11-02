@@ -7,16 +7,21 @@ from emporio.catalog import Catalog
 from emporio.policies import PolicyDataError, PolicyStore
 
 
+PRODUCTS_PER_PAGE = 5
+
+
 TOOLS = [{"type": "function", "function": {
     "name": "buscar_produtos",
     "description": (
         "Consulta produtos na base estática por termos do nome, categoria e preço. "
         "Sem filtros lista o catálogo. Inclui indisponíveis por padrão para distinguir "
-        "sem estoque, descontinuados e lançamentos. Retorna até 10 itens, ordenados por preço."
+        "sem estoque, descontinuados e lançamentos. Retorna 5 itens por página, ordenados por preço. "
+        "Para continuar, repita os filtros e incremente pagina."
     ),
     "parameters": {
         "type": "object",
         "properties": {
+            "pagina": {"type": "integer", "minimum": 1, "description": "Página desejada, começando em 1. Repita os filtros da busca anterior."},
             "nome": {"type": "string", "description": "Termos do produto, sem frases ou preço."},
             "categoria": {"type": "string", "description": "Nome da categoria, por exemplo Violões ou Ukuleles."},
             "preco_maximo": {"type": "string", "description": "Valor decimal em reais com ponto, sem símbolo ou milhar, por exemplo 1000.00."},
@@ -75,9 +80,14 @@ def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None, or
     if name != "buscar_produtos":
         return {"erro": "Ferramenta não autorizada."}
     if not isinstance(arguments, dict) or set(arguments) - {
-        "nome", "categoria", "preco_maximo", "disponibilidade",
+        "nome", "categoria", "preco_maximo", "disponibilidade", "pagina",
     }:
         return {"erro": "Argumentos inválidos ou desconhecidos."}
+    page = arguments.get("pagina", 1)
+    if isinstance(page, str) and re.fullmatch(r"[0-9]{1,6}", page):
+        page = int(page)
+    if type(page) is not int or not 1 <= page <= 1000000:
+        return {"erro": "pagina deve ser um inteiro positivo de até 1000000."}
     for field in ("nome", "categoria"):
         if field in arguments and (not isinstance(arguments[field], str) or len(arguments[field]) > 200):
             return {"erro": f"{field} deve ser texto de até 200 caracteres."}
@@ -99,8 +109,13 @@ def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None, or
         arguments.get("nome", "").strip(), category=arguments.get("categoria", "").strip(),
         max_price=maximum, available_only=availability == "disponiveis",
     )
+    total_pages = (len(products) + PRODUCTS_PER_PAGE - 1) // PRODUCTS_PER_PAGE
+    if page > max(1, total_pages):
+        return {"erro": "Página fora do intervalo. Use uma página válida para os mesmos filtros.",
+                "total": len(products), "total_paginas": total_pages}
+    start = (page - 1) * PRODUCTS_PER_PAGE
     items = []
-    for product in products[:10]:
+    for product in products[start:start + PRODUCTS_PER_PAGE]:
         if product.status == "discontinued":
             availability = "descontinuado"
         elif product.status == "coming_soon":
@@ -117,7 +132,9 @@ def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None, or
             "estoque": product.stock_quantity,
         })
     result = {"fonte": "CSV estático do desafio", "total": len(products),
-              "limitado": len(products) > 10, "produtos": items}
-    if len(products) > 10:
-        result["aviso"] = f"Há {len(products)} correspondências, mas apenas as primeiras 10 estão nesta lista. Informe que há mais opções."
+              "limitado": total_pages > 1, "pagina": page, "total_paginas": total_pages,
+              "proxima_pagina": page + 1 if page < total_pages else None, "produtos": items}
+    if total_pages > 1:
+        result["aviso"] = (f"Página {page} de {total_pages}, com {len(items)} de {len(products)} correspondências. "
+                           "Informe a página e ofereça a próxima somente se proxima_pagina não for nula.")
     return result
