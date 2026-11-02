@@ -21,9 +21,15 @@ def main():
     except (CatalogDataError, OrderDataError) as exc:
         print(f"Não foi possível iniciar o atendimento: {exc}")
         return 1
-    print("Empório da Música — catálogo, políticas e pedidos. Digite 'sair' para encerrar.")
-    print("Fontes: CSVs estáticos e manual fornecido.")
-    print(f"Cliente simulado: {args.customer_id}. Identificação local sem autenticação real.")
+    print("\nBem-vindo ao Empório da Música!\n")
+    print("Quer encontrar um instrumento, conhecer as políticas da loja")
+    print("ou consultar um pedido? Vamos conversar!\n")
+    print("Experimente:")
+    print('  • "Quais violões estão disponíveis até R$ 1.000?"')
+    print('  • "Como funciona o parcelamento?"')
+    print('  • "Qual é o status do meu pedido?"\n')
+    print('Digite "sair" para encerrar.\n')
+    print(f"Sessão de teste · Cliente {args.customer_id} · Identificação simulada\n")
     try:
         while True:
             text = input("Você: ").strip()
