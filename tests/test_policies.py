@@ -24,6 +24,25 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual([s["id"] for s in result["secoes"]], ["1"])
         self.assertIn("não comercializamos acessórios", result["secoes"][0]["texto"])
 
+    def test_store_presentation_and_instrument_types_recover_complete_section(self):
+        for question in (
+            "Fale sobre a Empório da Música.",
+            "Quais tipos de instrumentos vocês vendem?",
+            "Vocês vendem acessórios?",
+            "Fale sobre a loja", "Quem somos?", "Qual a história da loja?",
+            "O que vendem?", "Quais categorias de instrumentos comercializam?",
+        ):
+            with self.subTest(question=question):
+                result = self.store.search(question)
+                self.assertTrue(result["suficiente"])
+                self.assertEqual([s["id"] for s in result["secoes"]], ["1"])
+                section = result["secoes"][0]
+                self.assertEqual(section["texto"], self.store.sections["1"]["texto"])
+                for term in ("2008", "Campo Grande", "guitarras", "cordas orquestrais",
+                             "ukuleles", "não comercializamos acessórios"):
+                    self.assertIn(term, section["texto"])
+                self.assertIn("página(s) 2", section["referencia"])
+
     def test_whatsapp_uses_confirmed_decision_without_rewriting_pdf_text(self):
         result = self.store.search("Qual é o WhatsApp da loja?")
         self.assertEqual(result["decisoes_confirmadas"]["whatsapp"], "(67) 3341-4444")

@@ -27,7 +27,7 @@ TOOLS = [{"type": "function", "function": {
     },
 }}, {"type": "function", "function": {
     "name": "consultar_politicas",
-    "description": "Busca seções do manual com condições, exceções e referências. Use para horários, pagamentos, parcelamento, frete, trocas, devoluções, garantia e acumular promoções com PIX. Não consulta preços de produtos.",
+    "description": "Busca seções do manual com condições, exceções e referências. Use para apresentação e história da loja, tipos de instrumentos comercializados, acessórios, horários, pagamentos, parcelamento, frete, trocas, devoluções, garantia e acumular promoções com PIX. Não consulta preços ou estoque de produtos.",
     "parameters": {"type": "object", "properties": {
         "pergunta": {"type": "string", "description": "Pergunta completa e específica sobre a política."}},
         "required": ["pergunta"], "additionalProperties": False},

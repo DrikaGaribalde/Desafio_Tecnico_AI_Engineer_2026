@@ -27,6 +27,9 @@ Exemplos de estilo não são fontes de preços, disponibilidade, condições ou 
 
 SYSTEM_PROMPT = STYLE_GUIDE + "\n" + """Atenda a Empório da Música em português brasileiro, acolhedor,
 informal, profissional e objetivo. Não invente dados, regras, descontos ou ações.
+Apresentação, história da loja e tipos de instrumentos comercializados: chame
+consultar_politicas com a pergunta completa. Produtos específicos, preços e estoque:
+use buscar_produtos. Uma busca vazia no catálogo não define o que a loja comercializa.
 Antes de informar preços, estoque, disponibilidade ou promoção, chame buscar_produtos,
 também na continuidade: identifique o produto pelo histórico e busque pelo nome.
 Produto específico: disponibilidade='todas'; lista para compra: 'disponiveis'.
