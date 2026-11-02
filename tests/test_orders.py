@@ -44,7 +44,6 @@ class OrderTests(unittest.TestCase):
         self.assertIsNone(result["previsao_entrega"])
         self.assertIsNone(result["rastreamento"])
 
-<<<<<<< HEAD
     def test_tracking_lookup_matches_owned_order(self):
         result = self.orders.get_order_by_tracking(" brab1234567br ")
         self.assertEqual(result, self.orders.get_order(1))
@@ -70,8 +69,6 @@ class OrderTests(unittest.TestCase):
         result = execute_tool(self.catalog, "consultar_pedido", {"codigo_rastreio": "BRAB1234567BR"})
         self.assertIn("sessão não configurada", result["erro"])
 
-=======
->>>>>>> 2cd8e0874f0f73a4196c60d36588ae4aa823d1f8
     def test_historical_total_is_not_current_catalog_total(self):
         result = OrderStore(self.catalog, Session(12)).get_order(3)
         self.assertEqual(result["itens"][0]["quantidade"], 2)
@@ -150,17 +147,10 @@ class OrderTests(unittest.TestCase):
             def chat(self, messages, tools):
                 return next(self.responses)
         agent = Agent(self.catalog, Client(), orders=self.orders)
-<<<<<<< HEAD
         answer = agent.reply("Consulte o status do pedido 1 e explique se posso devolver.")
         self.assertIn("apenas informativo", answer)
         self.assertNotIn("A compra foi online ou presencial?", answer)
         self.assertNotIn("Em que data", answer)
-=======
-        answer = agent.reply("Posso devolver o pedido 1?")
-        self.assertIn("A compra foi online ou presencial?", answer)
-        self.assertIn("Em que data", answer)
-        self.assertIn("sem uso", answer)
->>>>>>> 2cd8e0874f0f73a4196c60d36588ae4aa823d1f8
         self.assertNotIn("devolução está aprovada", answer)
         self.assertEqual(agent.last_model_answer, "Sim, sua devolução está aprovada.")
         self.assertNotIn("devolução está aprovada", agent.turns[-1][-1]["content"])

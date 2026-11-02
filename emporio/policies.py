@@ -92,8 +92,8 @@ class PolicyStore:
             # A regra de cumulatividade é autocontida; não trazer a tabela de
             # parcelamento, que poderia confundir descontos e meios de pagamento.
             ranked = [item for item in ranked if item[1] not in {"3", "3.1", "6.1"}]
-        if "campo grande" in normalized:
-            ranked = [item for item in ranked if item[1] != "5.2"]
+        # Campo Grande pode ser origem, destino ou parte de uma comparação.
+        # Sua presença não exclui as regras de envio para outras cidades.
         selected = []
         # Até dois assuntos principais. Dependências preservam condições e exceções.
         for _, key in ranked[:2]:

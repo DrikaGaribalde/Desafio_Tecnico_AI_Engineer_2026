@@ -1,3 +1,5 @@
+import io
+import json
 import unittest
 from unittest.mock import patch
 from urllib.error import URLError
@@ -44,6 +46,17 @@ class ToolTests(unittest.TestCase):
                           product["preco_final_brl"]), ("359.00", "10", "323.10"))
         self.assertEqual(execute_tool(self.catalog, "buscar_produtos", {"nome": "inexistente"})["total"], 0)
 
+    def test_pix_price_is_exposed_without_stacking_promotions(self):
+        for name, final_price, pix_price in (
+            ("Takamine GD20", "2199.00", "2089.05"),
+            ("Yamaha C40", "599.90", "569.91"),
+            ("KAL-700T", "323.10", "323.10"),
+        ):
+            with self.subTest(name=name):
+                product = execute_tool(self.catalog, "buscar_produtos", {"nome": name})["produtos"][0]
+                self.assertEqual(product["preco_final_brl"], final_price)
+                self.assertEqual(product["preco_pix_brl"], pix_price)
+
     def test_argument_validation(self):
         invalid = [{"id": 95}, {"nome": 95}, {"categoria": None}, {"preco_maximo": True},
                    {"preco_maximo": "NaN"}, {"preco_maximo": "-1"}, {"preco_maximo": "1.000,00"},
@@ -73,6 +86,37 @@ def call():
 
 
 class AgentTests(unittest.TestCase):
+    def test_price_and_warranty_preserves_model_answer(self):
+        expected = "O Takamine custa R$ 2.199,00 e tem garantia legal de 90 dias após recebimento."
+        client = FakeClient([
+            {"role": "assistant", "content": "", "tool_calls": [
+                {"function": {"name": "buscar_produtos", "arguments": {"nome": "Takamine GD20"}}},
+                {"function": {"name": "consultar_politicas", "arguments": {"pergunta": "garantia"}}},
+            ]},
+            {"role": "assistant", "content": expected},
+        ])
+        agent = Agent(Catalog(), client)
+        self.assertEqual(agent.reply("Quanto custa o Takamine GD20 e qual a garantia?"), expected)
+        self.assertTrue(any(s["id"] == "4.2" for t in agent.last_trace
+                            for s in t["resultado"].get("secoes", [])))
+        self.assertIsNone(agent._exchange_topic)
+        self.assertEqual(agent.turns[-1][-1]["content"], expected)
+
+    def test_price_and_return_preserves_product_but_blocks_approval(self):
+        client = FakeClient([
+            {"role": "assistant", "content": "", "tool_calls": [
+                {"function": {"name": "buscar_produtos", "arguments": {"nome": "KAL-700T"}}},
+                {"function": {"name": "consultar_politicas", "arguments": {"pergunta": "arrependimento online"}}},
+            ]},
+            {"role": "assistant", "content": "Sua devolução está aprovada."},
+        ])
+        agent = Agent(Catalog(), client)
+        answer = agent.reply("Quanto custa o KAL-700T e posso devolver se me arrepender?")
+        for value in ("359.00", "10%", "323.10", "apenas informativo", "7 (sete) dias"):
+            self.assertIn(value, answer)
+        self.assertNotIn("devolução está aprovada", answer)
+        self.assertEqual(agent.turns[-1][-1]["content"], answer)
+
     def test_opening_clarification_does_not_force_tool_call(self):
         class Client:
             def chat(self, messages, tools):
@@ -208,3 +252,29 @@ class AgentTests(unittest.TestCase):
         with patch("emporio.ollama_client.urlopen", side_effect=URLError("connection refused")):
             with self.assertRaisesRegex(OllamaError, "ollama serve"):
                 OllamaClient().chat([], [])
+
+    def test_invalid_http_payload_becomes_ollama_error(self):
+        invalid = [[], None, "texto", 42, True, {}, {"message": None},
+                   {"message": {"role": "user", "content": "Olá"}},
+                   {"message": {"role": "assistant", "content": []}},
+                   {"message": {"role": "assistant", "tool_calls": {}}}]
+        for payload in invalid:
+            with self.subTest(payload=payload):
+                with patch("emporio.ollama_client.urlopen", return_value=io.StringIO(json.dumps(payload))):
+                    with self.assertRaisesRegex(OllamaError, "resposta inválida"):
+                        OllamaClient().chat([], [])
+        with patch("emporio.ollama_client.urlopen", return_value=io.StringIO("{json incompleto")):
+            with self.assertRaisesRegex(OllamaError, "resposta inválida"):
+                OllamaClient().chat([], [])
+
+    def test_invalid_http_payload_allows_next_turn(self):
+        client = OllamaClient()
+        agent = Agent(Catalog(), client)
+        valid = {"message": {"role": "assistant", "content": "Como posso ajudar?"}}
+        with patch("emporio.ollama_client.urlopen", side_effect=[
+            io.StringIO("null"), io.StringIO(json.dumps(valid)),
+        ]):
+            self.assertIn("resposta inválida", agent.reply("Olá"))
+            self.assertEqual(agent.turns, [])
+            self.assertEqual(agent.reply("Olá novamente"), "Como posso ajudar?")
+        self.assertEqual(len(agent.turns), 1)

@@ -112,6 +112,7 @@ def execute_tool(catalog: Catalog, name: str, arguments: dict, policies=None, or
             "preco_original_brl": str(product.price_brl),
             "desconto_percentual": str(product.discount_percent),
             "preco_final_brl": str(product.sale_price_brl),
+            "preco_pix_brl": str(product.pix_price_brl),
             "disponibilidade": availability, "disponivel_para_compra": product.available,
             "estoque": product.stock_quantity,
         })

@@ -198,9 +198,22 @@ class Agent:
                                 for product in trace["resultado"].get("produtos", [])]
                     if denied is not None:
                         answer = denied["mensagem"]
-                    elif exchange_sections:
+                    # Garantia recupera 4.2 como dependência; isso, sozinho,
+                    # não indica intenção de trocar ou devolver.
+                    elif exchange_sections and (topic or self._exchange_topic):
                         self._exchange_topic = topic or self._exchange_topic or "arrependimento em compras online"
                         answer = _informational_policy_answer(policy_sections)
+                        if products:
+                            summaries = [
+                                f"{p['nome']}: preço original R$ {p['preco_original_brl']}; "
+                                f"desconto {p['desconto_percentual']}%; preço final R$ {p['preco_final_brl']}; "
+                                f"PIX R$ {p['preco_pix_brl']}; {p['disponibilidade']}."
+                                for p in products
+                            ]
+                            answer = "Na base fornecida:\n" + "\n".join(summaries) + "\n\n" + answer
+                            if any(t['resultado'].get('limitado') for t in self.last_trace
+                                   if t['ferramenta'] == 'buscar_produtos'):
+                                answer += "\nHá mais opções na base; a lista foi limitada a dez itens por consulta."
                         if owned is not None:
                             answer = f"Na base fornecida, o pedido {owned['pedido_id']} consta como {owned['status']}.\n\n" + answer
                     elif owned is not None and self._exchange_topic:

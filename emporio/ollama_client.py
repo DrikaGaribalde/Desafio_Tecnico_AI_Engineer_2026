@@ -29,6 +29,8 @@ class OllamaClient:
         try:
             with urlopen(request, timeout=self.timeout) as response:
                 data = json.load(response)
+            if not isinstance(data, dict):
+                raise ValueError("A resposta deve ser um objeto JSON")
             self.last_usage = {"prompt_tokens": data.get("prompt_eval_count"),
                                "output_tokens": data.get("eval_count"),
                                "limite_contexto": CONTEXT_TOKENS,

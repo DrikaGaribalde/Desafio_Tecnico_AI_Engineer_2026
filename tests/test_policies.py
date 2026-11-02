@@ -87,6 +87,29 @@ class PolicyTests(unittest.TestCase):
         self.assertIn("acima de R$ 500", text)
         self.assertIn("abaixo de R$ 500", text)
 
+    def test_shipping_from_campo_grande_keeps_other_cities(self):
+        for question in (
+            "Qual o frete de Campo Grande para outras cidades?",
+            "Como funciona a entrega em Campo Grande e em outras cidades?",
+            "Qual o frete para outras cidades?",
+        ):
+            with self.subTest(question=question):
+                result = self.store.search(question)
+                self.assertTrue(result["suficiente"])
+                section = next(s for s in result["secoes"] if s["id"] == "5.2")
+                self.assertEqual(section["texto"], self.store.sections["5.2"]["texto"])
+                for term in ("CEP", "peso", "dimensões", "cotação individual"):
+                    self.assertIn(term, section["texto"])
+                self.assertTrue(any("não calcular frete" in note for note in result["ressalvas"]))
+
+    def test_local_shipping_keeps_confirmed_regional_rule(self):
+        result = self.store.search("Qual o frete na região metropolitana de Campo Grande?")
+        self.assertTrue(result["suficiente"])
+        self.assertIn("5.1", {s["id"] for s in result["secoes"]})
+        rule = result["decisoes_confirmadas"]["frete_metropolitano"]
+        self.assertTrue(rule["limite_inclusivo"])
+        self.assertEqual(rule["limite_frete_gratis_brl"], "500.00")
+
     def test_no_match_and_no_partial_section(self):
         result = self.store.search("aulas de canto gratuitas")
         self.assertFalse(result["encontrado"])

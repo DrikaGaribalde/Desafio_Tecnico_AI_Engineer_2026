@@ -75,6 +75,9 @@ para IDs. `buscar_produtos` aceita `nome`, `categoria`, `preco_maximo` e
 `disponibilidade` (`todas` ou `disponiveis`), todos opcionais. A aplicação rejeita
 ferramentas desconhecidas, argumentos extras e tipos ou valores inválidos.
 Os preços são calculados em Python e enviados ao modelo como texto decimal.
+Cada produto inclui `preco_final_brl` (preço com promoção, quando ativa) e
+`preco_pix_brl` (5% sobre tabela sem promoção; com promoção, mantém o preço
+promocional sem desconto adicional). O modelo usa esses valores sem recalcular.
 
 O prompt orienta linguagem acolhedora e objetiva, adaptação à experiência do cliente,
 uso do contexto e empatia nas reclamações, sem saudações ou perguntas repetitivas.
@@ -123,6 +126,10 @@ Trocas e devoluções têm atendimento apenas informativo: a aplicação apresen
 seções recuperadas, sem iniciar processos, solicitar dados para abertura ou confirmar
 elegibilidade individual. Dados fornecidos espontaneamente não geram aprovação.
 A consulta de pedidos permanece somente leitura. Ver [ADR 0009](docs/adr/0009-devolucoes-informativas.md).
+Recuperar uma seção de troca como dependência de garantia não ativa sozinho a
+resposta controlada: é necessário assunto de troca/devolução reconhecido na conversa.
+Quando essa proteção substitui a resposta em uma consulta conjunta de produtos,
+os preços e a disponibilidade retornados pela ferramenta são preservados no texto.
 Os registros distinguem respostas do modelo e proteções da aplicação.
 
 | Arquivo | Responsabilidade |
