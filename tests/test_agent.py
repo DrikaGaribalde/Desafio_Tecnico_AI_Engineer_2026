@@ -6,8 +6,10 @@ from urllib.error import URLError
 
 from emporio.agent import Agent
 from emporio.catalog import Catalog
+from emporio.context import fits_context
 from emporio.ollama_client import OllamaClient, OllamaError
-from emporio.tools import execute_tool
+from emporio.prompts import SYSTEM_PROMPT
+from emporio.tools import TOOLS, execute_tool
 
 
 class ToolTests(unittest.TestCase):
@@ -57,6 +59,45 @@ class ToolTests(unittest.TestCase):
                 self.assertEqual(product["preco_final_brl"], final_price)
                 self.assertEqual(product["preco_pix_brl"], pix_price)
 
+    def test_pagination_covers_all_matches_in_order(self):
+        filters = {"nome": "nylon", "categoria": "Violões", "disponibilidade": "disponiveis"}
+        expected = self.catalog.search_products("nylon", category="Violões")
+        names = []
+        for page, expected_size in ((1, 5), (2, 5), (3, 4)):
+            result = execute_tool(self.catalog, "buscar_produtos", {**filters, "pagina": page})
+            self.assertEqual(result["total"], 14)
+            self.assertEqual(result["pagina"], page)
+            self.assertEqual(result["total_paginas"], 3)
+            self.assertEqual(result["proxima_pagina"], page + 1 if page < 3 else None)
+            self.assertEqual(len(result["produtos"]), expected_size)
+            names.extend(p["nome"] for p in result["produtos"])
+        self.assertEqual(names, [p.name for p in expected])
+        self.assertEqual(len(set(names)), len(names))
+
+    def test_pagination_validation_empty_results_and_default(self):
+        for page in (True, False, 0, -1, 1.5, None, [], "1.0", "x", 1000001):
+            with self.subTest(page=page):
+                self.assertIn("erro", execute_tool(self.catalog, "buscar_produtos", {"pagina": page}))
+        self.assertIn("erro", execute_tool(self.catalog, "buscar_produtos", {"nome": "GD20", "pagina": 2}))
+        default = execute_tool(self.catalog, "buscar_produtos", {"nome": "GD20"})
+        self.assertEqual(default, execute_tool(self.catalog, "buscar_produtos", {"nome": "GD20", "pagina": "1"}))
+        self.assertEqual(default["total_paginas"], 1)
+        self.assertIsNone(default["proxima_pagina"])
+        empty = execute_tool(self.catalog, "buscar_produtos", {"nome": "inexistente"})
+        self.assertEqual(empty["total_paginas"], 0)
+        self.assertEqual(empty["produtos"], [])
+        self.assertIsNone(empty["proxima_pagina"])
+
+    def test_nylon_page_fits_context_with_tool_result(self):
+        arguments = {"nome": "nylon", "categoria": "Violões", "disponibilidade": "disponiveis"}
+        result = execute_tool(self.catalog, "buscar_produtos", arguments)
+        messages = [{"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": "Quais os violões de nylon?"},
+                    {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                        "name": "buscar_produtos", "arguments": arguments}}]},
+                    {"role": "tool", "tool_name": "buscar_produtos", "content": json.dumps(result, ensure_ascii=False)}]
+        self.assertTrue(fits_context(messages, TOOLS))
+
     def test_argument_validation(self):
         invalid = [{"id": 95}, {"nome": 95}, {"categoria": None}, {"preco_maximo": True},
                    {"preco_maximo": "NaN"}, {"preco_maximo": "-1"}, {"preco_maximo": "1.000,00"},
@@ -86,6 +127,31 @@ def call():
 
 
 class AgentTests(unittest.TestCase):
+    def test_next_page_preserves_filters_and_stops_at_end(self):
+        arguments = {"nome": "nylon", "categoria": "Violões", "disponibilidade": "disponiveis"}
+        client = FakeClient([
+            {"role": "assistant", "content": "", "tool_calls": [{"function": {
+                "name": "buscar_produtos", "arguments": arguments}}]},
+            {"role": "assistant", "content": "Há mais opções, sem listar produtos."},
+        ])
+        agent = Agent(Catalog(), client)
+        first = agent.reply("Quais os violões de nylon disponíveis?")
+        self.assertIn("Tagima Memphis", first)
+        self.assertIn("página 1 de 3", first)
+        self.assertIn("Digite 'continuar' para ver mais opções ou faça outra pergunta.", first)
+        for page in (2, 3):
+            answer = agent.reply("continuar" if page == 2 else "próxima página")
+            self.assertIn(f"página {page} de 3", answer)
+            self.assertEqual(agent.last_trace[0]["argumentos"], {**arguments, "pagina": page})
+            for product in agent.last_trace[0]["resultado"]["produtos"]:
+                self.assertIn(product["nome"], answer)
+        self.assertIn("última página", answer)
+        self.assertIn("não tem próxima página", agent.reply("continuar"))
+        self.assertEqual(len(client.requests), 2)
+        self.assertEqual(agent.last_trace, [])
+        self.assertIn("Informe os filtros", Agent(Catalog(), object()).reply("próxima página"))
+        self.assertIn("Informe os filtros", Agent(Catalog(), object()).reply("continuar"))
+
     def test_price_and_warranty_preserves_model_answer(self):
         expected = "O Takamine custa R$ 2.199,00 e tem garantia legal de 90 dias após recebimento."
         client = FakeClient([

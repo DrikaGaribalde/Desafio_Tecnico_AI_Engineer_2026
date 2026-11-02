@@ -73,6 +73,18 @@ def _informational_policy_answer(sections):
             + excerpts + "\n\nPara tratar de uma troca ou devolução, fale diretamente com o atendimento da loja.")
 
 
+def _product_page_answer(result: dict) -> str:
+    lines = [f"Na base fornecida: página {result['pagina']} de {result['total_paginas']}, "
+             f"{result['total']} produtos encontrados."]
+    for product in result["produtos"]:
+        lines.append(f"- {product['nome']}: original R$ {product['preco_original_brl']}; "
+                     f"desconto {product['desconto_percentual']}%; final R$ {product['preco_final_brl']}; "
+                     f"PIX R$ {product['preco_pix_brl']}; {product['disponibilidade']}.")
+    lines.append("Digite 'continuar' para ver mais opções ou faça outra pergunta." if result["proxima_pagina"] is not None
+                 else "Esta é a última página.")
+    return "\n".join(lines)
+
+
 def _order_summary(order: dict) -> str:
     """Apresenta somente dados autorizados, sem recalcular o total histórico."""
     items = "; ".join(f"{item['quantidade']} x {item['nome'] or 'nome não informado'}"
@@ -96,6 +108,7 @@ class Agent:
         self.orders = orders
         self.last_model_answer = None
         self._exchange_topic = None
+        self._last_product_page = None
 
     def _save_turn(self, messages: list[dict]) -> None:
         """Guarda somente turnos completos, preservando chamadas e resultados."""
@@ -136,9 +149,12 @@ class Agent:
                     for p in products
                 ]
                 answer = "Na base fornecida:\n" + "\n".join(summaries) + "\n\n" + answer
-                if any(t['resultado'].get('limitado') for t in self.last_trace
-                       if t['ferramenta'] == 'buscar_produtos'):
-                    answer += "\nHá mais opções na base; a lista foi limitada a dez itens por consulta."
+                for trace in self.last_trace:
+                    result = trace["resultado"]
+                    if trace["ferramenta"] == "buscar_produtos" and result.get("limitado"):
+                        answer += f"\nPágina {result['pagina']} de {result['total_paginas']}."
+                        if result["proxima_pagina"] is not None:
+                            answer += " Digite 'continuar' para ver mais opções ou faça outra pergunta."
             if owned is not None:
                 answer = _order_summary(owned) + "\n\n" + answer
         elif owned is not None and self._exchange_topic:
@@ -150,6 +166,11 @@ class Agent:
               and not re.search(r"preco|custa|valor|quanto|promoc", _normalize(text))):
             answer = (f"O {products[0]['nome']} está sem estoque na base fornecida. "
                       "Quer que eu consulte modelos parecidos? O que você mais gostou nele?")
+        elif all(t["ferramenta"] == "buscar_produtos" for t in self.last_trace) and any(
+                 t["ferramenta"] == "buscar_produtos" and t["resultado"].get("limitado")
+                 for t in self.last_trace):
+            answer = "\n\n".join(_product_page_answer(t["resultado"]) for t in self.last_trace
+                                    if t["ferramenta"] == "buscar_produtos" and t["resultado"].get("limitado"))
         return answer
 
     def _reply_exchange_policy(self, text, topic):
@@ -170,6 +191,22 @@ class Agent:
             return "Digite uma pergunta sobre os instrumentos."
         if len(text) > 2000:
             return "Sua mensagem é muito longa. Use até 2.000 caracteres."
+        if re.fullmatch(r"(?:continuar|(?:mostre (?:a )?|quero (?:a )?)?proxima pagina)[.!?]?", _normalize(text).strip()):
+            if self._last_product_page is None:
+                return "Qual busca de produtos você quer fazer? Informe os filtros para começar."
+            arguments, previous = self._last_product_page
+            if previous["proxima_pagina"] is None:
+                return "Essa busca não tem próxima página. Você pode informar novos filtros."
+            arguments = {**arguments, "pagina": previous["proxima_pagina"]}
+            result = execute_tool(self.catalog, "buscar_produtos", arguments, self.policies, self.orders)
+            self.last_trace.append({"ferramenta": "buscar_produtos", "argumentos": arguments,
+                                    "resultado": result, "origem": "aplicacao"})
+            if "erro" in result:
+                return result["erro"]
+            self._last_product_page = (arguments, result)
+            answer = _product_page_answer(result)
+            self._save_turn([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
+            return answer
         if _accessory_scope_question(text):
             # Consulta de escopo iniciada pela aplicação: o modelo local chegou
             # a chamar catálogo ou emitir JSON de função como texto nesse caso.
@@ -257,6 +294,8 @@ class Agent:
                     name = function.get("name", "") if isinstance(function, dict) else ""
                     arguments = function.get("arguments", {}) if isinstance(function, dict) else {}
                     result = execute_tool(self.catalog, name, arguments, self.policies, self.orders)
+                    if name == "buscar_produtos" and "erro" not in result:
+                        self._last_product_page = (dict(arguments), result)
                     self.last_trace.append({"ferramenta": name, "argumentos": arguments, "resultado": result})
                     current.append({"role": "tool", "tool_name": name,
                                     "content": json.dumps(result, ensure_ascii=False, separators=(",", ":"))})

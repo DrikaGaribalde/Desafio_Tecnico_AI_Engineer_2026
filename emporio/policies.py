@@ -19,7 +19,9 @@ WHATSAPP_ADOTADO = "(67) 3341-4444"
 TOPICS = {
     "1.2": ("telefone", "contato", "endereco", "email"),
     "7": ("whatsapp", "whats", "zap"),
-    "1": ("acessor", "cabo", "palheta", "cordas para", "jogo de cordas", "case", "pedal", "amplificador"),
+    "1": ("acessor", "cabo", "palheta", "cordas para", "jogo de cordas", "case", "pedal", "amplificador",
+          "sobre a loja", "sobre o emporio", "sobre a emporio", "quem somos", "historia",
+          "o que vendem", "tipos de instrumentos", "categorias de instrumentos", "apresentacao da loja"),
     "2": ("horario", "sabado", "domingo", "feriado", "abre", "fecha", "expediente"),
     "3": ("pagamento", "pagar", "pix", "boleto", "debito", "credito", "cartao"),
     "3.1": ("parcel", "12x", "6x", "3x", "juros", "prestac"),

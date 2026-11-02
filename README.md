@@ -117,8 +117,17 @@ Os registros históricos refletem versões sucessivas e não garantem consistên
 - Dados estáticos, sem integração comercial ou com transportadoras; autenticação simulada.
 - O modelo pode omitir condições, deixar de consultar ferramentas ou contradizer resultados.
   Os controles não validam semanticamente todas as respostas.
-- Busca textual limitada para sinônimos e perguntas mistas; catálogo com até dez resultados,
-  sem paginação. Inconsistências dos dados afetam a busca.
+- Busca textual limitada para sinônimos e perguntas mistas. O catálogo retorna cinco
+  produtos por página, ordenados por preço; digite “continuar” ou “próxima página”
+  para ver mais opções, ou faça outra pergunta para seguir o atendimento. `sair`
+  encerra toda a sessão.
+  A ferramenta repete os filtros com `pagina` e informa total, total de páginas e
+  próxima página. A aplicação guarda os filtros da última consulta bem-sucedida na
+  sessão; “continuar” e “próxima página” os reutilizam sem chamar o modelo. Sem busca anterior,
+  pede filtros; após a última página, informa que não há outra. Listas paginadas
+  de catálogo são apresentadas pela aplicação para não omitir itens ou inventar páginas.
+  Inconsistências dos dados afetam a busca; paginação reduz o contexto, mas não garante
+  que toda consulta composta caiba no orçamento.
 - Orçamento de contexto estimado; conversas longas perdem turnos antigos.
 - Devoluções usam reconhecimento textual e podem repetir regras. Não há motor de elegibilidade.
 - Desempenho depende do hardware local. Os testes não cobrem todas as situações.
