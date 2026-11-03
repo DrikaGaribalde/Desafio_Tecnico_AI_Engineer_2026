@@ -139,22 +139,25 @@ qualidade do modelo. Execuções reais e falhas estão nas avaliações de
 [produtos](docs/avaliacoes/README.md), [políticas](docs/avaliacoes/politicas/README.md),
 [pedidos](docs/avaliacoes/pedidos/README.md) e [estilo](docs/avaliacoes/estilo/README.md).
 
-Cinco conversas reais da versão registrada em 02/11/2026:
+Cinco conversas reais da rodada mais recente, executada em 02/11/2026 (horário de Brasília):
 
-1. [Apresentação, fora do escopo e acessórios](docs/conversas/versao-final-2026-11-02/01-loja-e-escopo.md).
-2. [Orçamento e paginação](docs/conversas/versao-final-2026-11-02/02-orcamento-e-paginacao.md).
-3. [Preço e continuidade no PIX](docs/conversas/versao-final-2026-11-02/03-preco-e-continuidade.md).
-4. [Indisponibilidade, descontinuado e promoção](docs/conversas/versao-final-2026-11-02/04-disponibilidade-e-promocao.md).
-5. [Pedido próprio, pedido alheio e devolução informativa](docs/conversas/versao-final-2026-11-02/05-pedidos-e-devolucao.md).
+1. [Apresentação, fora do escopo e acessórios](docs/conversas/versao-final-2026-11-02-rodada-02/01-loja-e-escopo.md).
+2. [Orçamento e paginação](docs/conversas/versao-final-2026-11-02-rodada-02/02-orcamento-e-paginacao.md).
+3. [Preço e continuidade no PIX](docs/conversas/versao-final-2026-11-02-rodada-02/03-preco-e-continuidade.md).
+4. [Indisponibilidade, descontinuado e promoção](docs/conversas/versao-final-2026-11-02-rodada-02/04-disponibilidade-e-promocao.md).
+5. [Pedido próprio, pedido alheio e devolução informativa](docs/conversas/versao-final-2026-11-02-rodada-02/05-pedidos-e-devolucao.md).
 
 Cada arquivo separa classificação de escopo, resposta bruta do modelo, resposta
 apresentada e intervenções da aplicação. Inclui as ferramentas, resultados e métricas,
 sem editar as falas para ocultar falhas. O código e o modelo utilizados estão
-identificados nos [metadados](docs/conversas/versao-final-2026-11-02/metadados.json).
-Esses registros antecedem as correções de continuidade no PIX e de instruções de
-compra na CLI; foram preservados como evidência da versão executada. Incluem falhas,
-como a omissão do preço original e do percentual de promoção, e não representam
-aprovação integral das respostas.
+identificados nos [metadados](docs/conversas/versao-final-2026-11-02-rodada-02/metadados.json).
+Esta rodada inclui as correções de continuidade no PIX e de instruções de compra na CLI.
+Os registros preservam as falhas observadas e não representam aprovação integral das respostas.
+Na consulta promocional, o modelo informou o valor final e o estoque, mas omitiu
+o preço original e o percentual de desconto.
+
+A [rodada anterior](docs/conversas/versao-final-2026-11-02/) foi preservada como
+evidência histórica, anterior a essas correções.
 
 Os [cinco exemplos anteriores de catálogo](docs/avaliacoes/catalogo-historico/) foram
 arquivados nas avaliações, com as falas originais preservadas.

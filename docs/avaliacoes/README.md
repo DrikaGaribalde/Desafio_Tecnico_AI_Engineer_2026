@@ -9,11 +9,13 @@ igualdade entre os textos, sem afirmar ausência de verificações ou proteçõe
 
 ## Índice
 
-- [Conversas da versão final registrada em 02/11/2026](../conversas/versao-final-2026-11-02/): cinco sessões com respostas brutas, respostas apresentadas e intervenções da aplicação.
+- [Conversas mais recentes — rodada 02 de 02/11/2026](../conversas/versao-final-2026-11-02-rodada-02/): cinco sessões após as correções de PIX e navegação, com respostas brutas, respostas apresentadas e intervenções da aplicação.
+- [Rodada anterior de 02/11/2026](../conversas/versao-final-2026-11-02/): histórico preservado, anterior a essas correções.
 - [Políticas e orçamento de contexto](politicas/README.md).
 - [Pedidos, autorização e devolução](pedidos/README.md).
 - [Estilo e esclarecimentos](estilo/README.md).
 - [Classificação de escopo por intenção](escopo/classificacao-intencao-2026-11-02.md).
+- [Conversa adicional de escopo](escopo/conversa-adicional-2026-11-02.md): geografia, culinária, programação e retorno ao atendimento da loja, em uma sessão real.
 - [Produtos indisponíveis e buscas sem correspondência](produtos-indisponiveis-2026-11-02.md).
 - [Conversas históricas de catálogo](catalogo-historico/).
 
